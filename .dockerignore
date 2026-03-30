@@ -1,0 +1,6 @@
+.git
+**/target
+**/node_modules
+**/.env
+apps/sentinel-ui/dist
+packages/sentinel-auth-sdk/dist

@@ -1,0 +1,228 @@
+//! OpenAPI / Swagger configuration for the Sentinel Auth API.
+//!
+//! Defines the `ApiDoc` struct (derived via `#[derive(OpenApi)]`) which lists
+//! every path and schema exposed in the generated spec.  The spec is served at
+//! `GET /api-docs/openapi.json` and the Swagger UI at `GET /swagger-ui`.
+//!
+//! To add a new endpoint: annotate the handler with `#[utoipa::path(...)]` and
+//! add it to `paths(...)` here.  To expose a new type in the schema browser,
+//! add it to `components(schemas(...))`.
+
+use utoipa::{
+    openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
+    Modify, OpenApi,
+};
+
+use crate::{
+    http::api::dtos::{
+        AdminCreateUserRequest, AdminSessionResponse, AdminUserResponse, ApiTokenResponse,
+        AssignRoleRequest, AuthContextResponse, AuthMethodsResponse, BasicAuthLoginRequest,
+        BasicLoginResponse, BatchCheckItem, BatchCheckRequest, BatchCheckResponse,
+        BatchCheckResult, BulkRevokeSessionsRequest, BulkRevokeSessionsResponse,
+        ChangePasswordRequest, CheckAuthorizationRequest, CheckAuthorizationResponse,
+        ConfirmMfaEnrollmentRequest, ConfirmMfaEnrollmentResponse, CreateApiTokenRequest,
+        CreateApiTokenResponse, CreateEmailTemplateRequest, CreateOidcClientRequest,
+        CreateOidcClientResponse, CreatePolicyRequest, CreatePolicyResponse,
+        CreateProviderConfigRequest, CreateRoleRequest, DecryptedProviderConfigResponse,
+        EmailTemplateResponse, ForgotPasswordRequest, GenerateKeyResponse, GetPolicyRulesResponse,
+        InsightsSummaryResponse, InviteLinkResponse, LoginOutcome, MfaChallengeResponse,
+        OidcClientInfo, PaginatedUsersResponse, PolicyResponse, PolicyRule, ProbeResult,
+        ProviderConfigResponse, RefreshTokenRequest, RegisterUserRequest, RegisterUserResponse,
+        ResendVerificationRequest, ResetPasswordRequest, RoleResponse, RunProbeRequest,
+        RunProbeResponse, SendTestEmailRequest, SessionActivityPoint, StartMfaEnrollmentResponse,
+        TestProviderConfigResponse, TokenExchangeForm, TokenResponse, UpdateEmailTemplateRequest,
+        UpdatePolicyRulesRequest, UpdatePolicyRulesResponse, UpdateProviderConfigRequest,
+        UpdateRoleRequest, UpdateUserStatusRequest, UserAuthInfoResponse, UserGrowthPoint,
+        UserMfaStatusResponse, UserPermissionsResponse, UserProfileResponse,
+        UserSessionDetailResponse, UserSessionResponse, VerifyMfaRequest, AdminSetMfaRequiredRequest,
+    },
+    EmailTemplateType, UserStatus,
+};
+
+struct BearerSecurityAddon;
+
+impl Modify for BearerSecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        let components = openapi.components.get_or_insert_with(Default::default);
+        components.add_security_scheme(
+            "BearerAuth",
+            SecurityScheme::Http(
+                HttpBuilder::new()
+                    .scheme(HttpAuthScheme::Bearer)
+                    .bearer_format("PASETO v4")
+                    .build(),
+            ),
+        );
+    }
+}
+
+#[derive(OpenApi)]
+#[openapi(
+    info(
+        title = "Sentinel Auth API",
+        version = "1.0.0",
+        description = "Authentication and authorization service. \
+            All responses are wrapped: `{ \"success\": bool, \"data\": {…}, \
+            \"error\": null, \"timestamp\": \"…\", \"request_id\": \"…\" }` \
+            (except OIDC endpoints which follow the OAuth 2.0 / OIDC spec format)"
+    ),
+    paths(
+        crate::api::handlers::authenticate,
+        crate::api::handlers::logout,
+        crate::api::handlers::logout_all,
+        crate::api::handlers::register_user,
+        crate::api::handlers::basic_auth_login,
+        crate::api::handlers::list_policies,
+        crate::api::handlers::create_policy,
+        crate::api::handlers::delete_policy,
+        crate::api::handlers::get_policy_rules,
+        crate::api::handlers::update_policy_rules,
+        crate::api::handlers::check_authorization,
+        crate::api::handlers::check_authorization_batch,
+        crate::api::handlers::run_policy_probe,
+        crate::api::handlers::add_provider_config,
+        crate::api::handlers::list_provider_configs,
+        crate::api::handlers::update_provider_config,
+        crate::api::handlers::delete_provider_config,
+        crate::api::handlers::get_provider_config_decrypted,
+        crate::api::handlers::test_provider_config,
+        crate::api::handlers::send_test_provider_email,
+        crate::api::handlers::protected_canary,
+        crate::api::handlers::get_me,
+        crate::api::handlers::openid_configuration,
+        crate::api::handlers::jwks,
+        crate::api::handlers::authorize,
+        crate::api::handlers::token_exchange,
+        crate::api::handlers::generate_signing_key,
+        crate::api::handlers::create_oidc_client,
+        crate::api::handlers::token_refresh,
+        crate::api::handlers::mfa_totp_start,
+        crate::api::handlers::mfa_totp_confirm,
+        crate::api::handlers::mfa_verify,
+        crate::api::handlers::create_api_token,
+        crate::api::handlers::list_api_tokens,
+        crate::api::handlers::revoke_api_token,
+        crate::api::handlers::revoke_all_tokens,
+        crate::api::handlers::verify_email,
+        crate::api::handlers::resend_verification,
+        crate::api::handlers::forgot_password,
+        crate::api::handlers::reset_password,
+        crate::api::handlers::change_password,
+        crate::api::handlers::list_email_templates,
+        crate::api::handlers::create_email_template,
+        crate::api::handlers::update_email_template,
+        crate::api::handlers::get_auth_methods,
+        crate::api::handlers::get_user_sessions,
+        crate::api::handlers::get_user_session,
+        crate::api::handlers::get_user_permissions,
+        crate::api::handlers::create_role,
+        crate::api::handlers::list_roles,
+        crate::api::handlers::update_role,
+        crate::api::handlers::delete_role,
+        crate::api::handlers::assign_role_to_user,
+        crate::api::handlers::remove_role_from_user,
+        crate::api::handlers::get_user_permissions_admin,
+        crate::api::handlers::get_user_auth_info,
+        crate::api::handlers::set_user_mfa_required,
+        crate::api::handlers::list_admin_users,
+        crate::api::handlers::create_admin_user,
+        crate::api::handlers::delete_admin_user,
+        crate::api::handlers::update_admin_user_status,
+        crate::api::handlers::send_user_invite,
+        crate::api::handlers::get_user_invite_link,
+        crate::api::handlers::get_all_admin_sessions,
+        crate::api::handlers::revoke_admin_session,
+        crate::api::handlers::revoke_admin_sessions_bulk,
+        crate::api::handlers::get_insights_summary,
+        crate::api::handlers::get_user_growth,
+        crate::api::handlers::get_session_activity,
+    ),
+    components(
+        schemas(
+            AuthContextResponse,
+            BasicAuthLoginRequest,
+            BasicLoginResponse,
+            RegisterUserRequest,
+            RegisterUserResponse,
+            PolicyRule,
+            PolicyResponse,
+            GetPolicyRulesResponse,
+            CreatePolicyRequest,
+            CreatePolicyResponse,
+            UpdatePolicyRulesRequest,
+            UpdatePolicyRulesResponse,
+            CheckAuthorizationRequest,
+            CheckAuthorizationResponse,
+            BatchCheckItem,
+            BatchCheckRequest,
+            BatchCheckResponse,
+            BatchCheckResult,
+            RunProbeRequest,
+            RunProbeResponse,
+            ProbeResult,
+            CreateProviderConfigRequest,
+            ProviderConfigResponse,
+            UpdateProviderConfigRequest,
+            DecryptedProviderConfigResponse,
+            TestProviderConfigResponse,
+            SendTestEmailRequest,
+            UserProfileResponse,
+            UserStatus,
+            TokenResponse,
+            TokenExchangeForm,
+            CreateOidcClientRequest,
+            CreateOidcClientResponse,
+            GenerateKeyResponse,
+            RefreshTokenRequest,
+            StartMfaEnrollmentResponse,
+            ConfirmMfaEnrollmentRequest,
+            ConfirmMfaEnrollmentResponse,
+            VerifyMfaRequest,
+            LoginOutcome,
+            MfaChallengeResponse,
+            CreateApiTokenRequest,
+            CreateApiTokenResponse,
+            ApiTokenResponse,
+            ResendVerificationRequest,
+            ForgotPasswordRequest,
+            ResetPasswordRequest,
+            ChangePasswordRequest,
+            CreateEmailTemplateRequest,
+            UpdateEmailTemplateRequest,
+            EmailTemplateResponse,
+            EmailTemplateType,
+            AuthMethodsResponse,
+            OidcClientInfo,
+            UserSessionResponse,
+            UserSessionDetailResponse,
+            RoleResponse,
+            UserPermissionsResponse,
+            CreateRoleRequest,
+            UpdateRoleRequest,
+            AssignRoleRequest,
+            AdminCreateUserRequest,
+            AdminUserResponse,
+            PaginatedUsersResponse,
+            UpdateUserStatusRequest,
+            UserAuthInfoResponse,
+            AdminSetMfaRequiredRequest,
+            UserMfaStatusResponse,
+            InviteLinkResponse,
+            AdminSessionResponse,
+            BulkRevokeSessionsRequest,
+            BulkRevokeSessionsResponse,
+            InsightsSummaryResponse,
+            UserGrowthPoint,
+            SessionActivityPoint,
+        )
+    ),
+    modifiers(&BearerSecurityAddon),
+    tags(
+        (name = "auth", description = "Authentication, token verification and authorization"),
+        (name = "admin", description = "Policy, role, and OIDC client management (admin only)"),
+        (name = "system", description = "System configuration (admin only, Bearer required)"),
+        (name = "user", description = "User-scoped endpoints (Bearer + policy required)"),
+        (name = "oidc", description = "OIDC / OAuth 2.0 protocol endpoints (spec-compliant, no Sentinel envelope)"),
+    )
+)]
+pub struct ApiDoc;

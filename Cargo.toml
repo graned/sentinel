@@ -1,0 +1,3 @@
+[workspace]
+members = ["apps/sentinel-core", "packages/sentinel-policy-engine"]
+resolver = "2"

@@ -1,0 +1,548 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Stats row */
+.statsRow {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.statCard {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.statValue {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.statGreen {
+  color: #22c55e;
+}
+
+.statWarning {
+  color: #f59e0b;
+}
+
+/* Invite form */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 560px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.formError {
+  font-size: 0.82rem;
+  color: #f87171;
+  margin: 0;
+}
+
+/* Search */
+.searchRow {
+  display: flex;
+  align-items: center;
+}
+
+.searchInput {
+  width: 100%;
+  max-width: 420px;
+  padding: 0.5rem 0.875rem;
+  background: var(--bg-input, var(--bg-card));
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.searchInput:focus {
+  border-color: var(--color-primary, #06b6d4);
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+/* Table */
+.tableWrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th {
+  text-align: left;
+  padding: 0.6rem 0.875rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.75rem 0.875rem;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover td {
+  background: var(--bg-hover);
+}
+
+/* User cell */
+.userCell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.avatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.03em;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.userName {
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userEmail {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Roles */
+.roleBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Checkbox column */
+.checkboxCol {
+  width: 2.5rem;
+  text-align: center;
+  padding-left: 0.875rem !important;
+  padding-right: 0.25rem !important;
+}
+
+/* Selected row highlight */
+.rowSelected td {
+  background: var(--bg-hover);
+}
+
+/* Bulk selection toolbar */
+.selectionBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.625rem;
+}
+
+.selectionCount {
+  font-size: 0.825rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.muted {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 12px 0 4px;
+}
+
+.pageInfo {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Delete confirmation modal */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 9, 20, 0.8);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal {
+  background: var(--gradient-card, linear-gradient(135deg, #111d35 0%, #0d1526 100%));
+  border: 1px solid var(--border-muted);
+  border-radius: 0.875rem;
+  box-shadow: var(--shadow-modal, 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border-subtle)),
+              var(--glow-xs, 0 0 8px rgba(6, 182, 212, 0.15));
+  width: 100%;
+  max-width: 420px;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modalBody {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  margin-top: 0.25rem;
+}
+
+/* ── Invite User modal ───────────────────────────────────────────────────── */
+
+.inviteModal {
+  background: var(--gradient-card, linear-gradient(135deg, #111d35 0%, #0d1526 100%));
+  border: 1px solid var(--border-muted);
+  border-radius: 0.875rem;
+  box-shadow: var(--shadow-modal, 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border-subtle)),
+              var(--glow-xs, 0 0 8px rgba(6, 182, 212, 0.15));
+  width: 100%;
+  max-width: 520px;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.inviteModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.inviteModalTitle {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.inviteModalClose {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.375rem;
+  line-height: 1;
+  color: var(--text-muted);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.375rem;
+  transition: color 0.15s, background 0.15s;
+}
+
+.inviteModalClose:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+/* First / Last name side-by-side */
+.inviteNameRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .inviteNameRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Field (label + input) */
+.inviteField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.inviteFieldLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.inviteFieldIcon {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.inviteInput {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  background: var(--bg-input, var(--bg-card));
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.inviteInput:focus {
+  border-color: var(--color-primary, #06b6d4);
+}
+
+.inviteInput::placeholder {
+  color: var(--text-muted);
+}
+
+/* Role dropdown */
+.inviteDropdown {
+  position: relative;
+}
+
+.inviteDropdownTrigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0.875rem;
+  background: var(--bg-input, var(--bg-card));
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.inviteDropdownTrigger:hover,
+.inviteDropdownTrigger:focus {
+  border-color: var(--color-primary, #06b6d4);
+  outline: none;
+}
+
+.inviteDropdownSelected {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.inviteDropdownIcon {
+  display: flex;
+  align-items: center;
+  color: var(--color-primary, #06b6d4);
+  flex-shrink: 0;
+}
+
+.chevronDown {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+
+.chevronUp {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  transform: rotate(180deg);
+  transition: transform 0.15s;
+}
+
+.inviteDropdownMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  list-style: none;
+  margin: 0;
+  padding: 0.3rem;
+  overflow: hidden;
+}
+
+.inviteDropdownOption {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.inviteDropdownOption:hover {
+  background: var(--bg-hover);
+}
+
+.inviteDropdownOptionActive {
+  background: var(--bg-hover);
+  color: var(--color-primary, #06b6d4);
+}
+
+/* Send invite email checkbox row */
+.inviteCheckRow {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+
+.inviteCheckRow input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: var(--color-primary, #06b6d4);
+}
+
+/* Footer actions */
+.inviteFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  margin-top: 0.25rem;
+}
+
+/* Email list inside bulk-delete modal */
+.deleteList {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  max-height: 160px;
+  overflow-y: auto;
+}

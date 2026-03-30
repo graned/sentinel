@@ -1,0 +1,210 @@
+/* ─── Page shell ──────────────────────────────────────────────── */
+.page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* ─── Left: brand panel ───────────────────────────────────────── */
+.brandPanel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #0a1628 0%, #070d1a 55%, #050b15 100%);
+  overflow: hidden;
+  padding: 3rem 2rem;
+  gap: 1rem;
+}
+
+.gridDots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(248, 113, 113, 0.18) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.brandPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 55% at 50% 46%, rgba(248, 113, 113, 0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ─── Animation stage ─────────────────────────────────────────── */
+.animationStage {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(248, 113, 113, 0.22);
+  animation: ringPulse 3s ease-in-out infinite;
+}
+
+.ring1 { width: 180px; height: 180px; animation-delay: 0s; }
+.ring2 { width: 220px; height: 220px; border-color: rgba(248, 113, 113, 0.13); animation-delay: 0.9s; }
+.ring3 { width: 260px; height: 260px; border-color: rgba(239, 68, 68, 0.1); animation-delay: 1.8s; }
+
+@keyframes ringPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.03); }
+}
+
+.lockWrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lockSvg {
+  width: 90px;
+  height: 105px;
+  filter: drop-shadow(0 0 18px rgba(248, 113, 113, 0.35));
+}
+
+/* ─── Wordmark ─────────────────────────────────────────────────── */
+.wordmark {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #f8fafc;
+}
+
+.wordmarkSentinel { color: #f87171; }
+.wordmarkAuth     { color: #94a3b8; }
+
+.tagline {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.taglineSubtext {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+  text-align: center;
+  max-width: 260px;
+  line-height: 1.5;
+}
+
+/* ─── Right: form panel ───────────────────────────────────────── */
+.formPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #080f1e;
+  padding: 2rem;
+  position: relative;
+}
+
+.topControls {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.topControlBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+}
+
+.topControlChevron {
+  color: #334155;
+}
+
+/* ─── Card ─────────────────────────────────────────────────────── */
+.formCard {
+  width: 100%;
+  max-width: 400px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+}
+
+/* ─── Status (centered states) ────────────────────────────────── */
+.statusCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.errorIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f87171;
+}
+
+.formTitle {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.formSubtitle {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.6;
+  max-width: 320px;
+}
+
+.actionBtn {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+/* ─── Footer ───────────────────────────────────────────────────── */
+.copyright {
+  position: absolute;
+  bottom: 1.25rem;
+  font-size: 0.75rem;
+  color: #1e293b;
+}
+
+/* ─── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+  .brandPanel {
+    display: none;
+  }
+}

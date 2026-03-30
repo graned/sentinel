@@ -1,0 +1,14 @@
+{
+  "plugins": ["react", "react-hooks", "typescript"],
+  "env": {
+    "browser": true,
+    "es2022": true
+  },
+  "rules": {
+    "no-unused-vars": "warn",
+    "no-console": "warn",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn"
+  },
+  "ignore": ["dist", "node_modules"]
+}

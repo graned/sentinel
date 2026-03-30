@@ -1,0 +1,19 @@
+--- src/schema.rs
++++ src/schema.rs
+@@ -72,14 +72,14 @@
+     oidc_clients (oidc_client_id) {
+         oidc_client_id -> Uuid,
+         tenant_id -> Nullable<Uuid>,
+         client_id -> Text,
+         client_secret_hash -> Nullable<Text>,
+         name -> Text,
+-        redirect_uris -> Array<Nullable<Text>>,
+-        allowed_scopes -> Array<Nullable<Text>>,
++        redirect_uris -> Array<Text>,
++        allowed_scopes -> Array<Text>,
+         pkce_required -> Bool,
+         is_confidential -> Bool,
+         created_at -> Timestamptz,
+     }
+ }
+ 

@@ -1,0 +1,163 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th {
+  text-align: left;
+  padding: 0.6rem 0.875rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.75rem 0.875rem;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover td {
+  background: var(--bg-hover);
+}
+
+/* Highlight current session row */
+.currentRow td {
+  border-left: 2px solid var(--accent-primary);
+}
+
+.currentRow td:first-child {
+  padding-left: calc(0.875rem - 2px);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  color: var(--text-code);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.ip {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.muted {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.email {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+/* Bulk action bar */
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.bulkCount {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.confirmText {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Checkbox column */
+.checkCol {
+  width: 2.5rem;
+  text-align: center;
+  padding-left: 0.875rem !important;
+  padding-right: 0 !important;
+}
+
+/* Actions column */
+.actionsCol {
+  width: 8rem;
+  text-align: right;
+}
+
+/* Danger button */
+.dangerBtn {
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--danger-border, #f87171);
+  background: transparent;
+  color: var(--danger, #ef4444);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dangerBtn:hover:not(:disabled) {
+  background: var(--danger-bg, #fef2f2);
+}
+
+.dangerBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dangerBtnSm {
+  composes: dangerBtn;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.cancelBtn {
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.cancelBtn:hover {
+  background: var(--bg-hover);
+}
+
+.cancelBtnSm {
+  composes: cancelBtn;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.inlineConfirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}

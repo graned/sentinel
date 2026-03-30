@@ -1,0 +1,4 @@
+apps/sentinel-core/target
+.env
+target/
+node_modules/

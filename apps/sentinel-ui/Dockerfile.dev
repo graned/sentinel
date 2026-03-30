@@ -1,0 +1,44 @@
+# Stage 1: Build the SDK
+FROM node:22-alpine AS sdk-builder
+
+WORKDIR /packages/sentinel-auth-sdk
+COPY packages/sentinel-auth-sdk/package.json ./
+RUN npm install && npm cache clean --force
+COPY packages/sentinel-auth-sdk/ ./
+RUN npm run build
+
+# Stage 2: Build @sentinel/auth-react (needs the built SDK as a dev dep)
+FROM node:22-alpine AS auth-react-builder
+
+# Make the built SDK available at the path the file: dep resolves to
+WORKDIR /packages/sentinel-auth-sdk
+COPY packages/sentinel-auth-sdk/package.json ./
+COPY --from=sdk-builder /packages/sentinel-auth-sdk/dist ./dist
+
+WORKDIR /packages/sentinel-auth-react
+COPY packages/sentinel-auth-react/package.json ./
+RUN npm install --legacy-peer-deps && npm cache clean --force
+COPY packages/sentinel-auth-react/ ./
+RUN npm run build
+
+# Final dev image
+FROM node:22-alpine
+
+# Copy SDK — needed for the file: dep in the UI's package.json
+WORKDIR /packages/sentinel-auth-sdk
+COPY packages/sentinel-auth-sdk/package.json ./
+COPY --from=sdk-builder /packages/sentinel-auth-sdk/dist ./dist
+
+# Copy auth-react — needed for the file: dep in the UI's package.json
+WORKDIR /packages/sentinel-auth-react
+COPY packages/sentinel-auth-react/package.json ./
+COPY --from=auth-react-builder /packages/sentinel-auth-react/dist ./dist
+
+# Install UI dependencies and clear the npm cache from the layer.
+WORKDIR /app
+COPY apps/sentinel-ui/package.json ./
+RUN npm install --legacy-peer-deps && npm cache clean --force
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]

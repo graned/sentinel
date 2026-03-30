@@ -1,0 +1,22 @@
+# Build stage: compile diesel_cli with the full Rust toolchain
+FROM rust:1.91-slim AS builder
+
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN cargo install diesel_cli --no-default-features --features postgres
+
+# Final stage: same base image as the builder so glibc versions always match.
+# Strip the Rust toolchain to keep the image small.
+FROM rust:1.91-slim
+
+RUN rm -rf /usr/local/rustup /usr/local/cargo/registry /usr/local/cargo/git \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /usr/local/cargo/bin/diesel /usr/local/bin/diesel
+
+WORKDIR /app

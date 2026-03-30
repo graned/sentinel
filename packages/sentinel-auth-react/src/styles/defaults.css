@@ -1,0 +1,37 @@
+/*
+ * Default CSS custom properties for @sentinel/auth-react components.
+ * These are the dark-theme defaults. Override any var in your app's global
+ * CSS, or pass `theme.primaryColor` / `theme.secondaryColor` to
+ * <SentinelAuthProvider> for programmatic overrides.
+ */
+:root {
+  --accent-primary: #06b6d4;
+  --accent-primary-hover: #22d3ee;
+  --accent-blue: #3b82f6;
+  --accent-blue-hover: #60a5fa;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+
+  --bg-surface: #0b1120;
+  --bg-elevated: #0d1829;
+  --bg-hover: #141e33;
+
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-muted: rgba(255, 255, 255, 0.12);
+  --border-active: #06b6d4;
+  --border-glow: rgba(6, 182, 212, 0.2);
+
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.08);
+  --danger-border: rgba(239, 68, 68, 0.25);
+
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.08);
+  --success-border: rgba(16, 185, 129, 0.3);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --transition: 0.15s ease;
+}

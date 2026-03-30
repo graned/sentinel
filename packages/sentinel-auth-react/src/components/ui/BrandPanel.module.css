@@ -1,0 +1,171 @@
+/* ─── Brand panel (left column of all auth pages) ─────────────── */
+.brandPanel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #0a1628 0%, #070d1a 55%, #050b15 100%);
+  overflow: hidden;
+  padding: 3rem 2rem;
+  gap: 1rem;
+}
+
+/* Subtle dot-grid background */
+.gridDots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(6, 182, 212, 0.18) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* Large radial glow */
+.brandPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 55% at 50% 46%, rgba(6, 182, 212, 0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ─── Animation stage ─────────────────────────────────────────── */
+.animationStage {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Concentric rings */
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(6, 182, 212, 0.22);
+  animation: ringPulse 3s ease-in-out infinite;
+}
+
+.ring1 { width: 180px; height: 180px; animation-delay: 0s; }
+.ring2 { width: 220px; height: 220px; border-color: rgba(6, 182, 212, 0.13); animation-delay: 0.9s; }
+.ring3 { width: 260px; height: 260px; border-color: rgba(59, 130, 246, 0.1); animation-delay: 1.8s; }
+
+/* Orbiting dot tracks */
+.orbitTrack {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.orbitDot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
+}
+
+.orbitOuter  { animation: orbitSlow 10s linear infinite; }
+.orbitPhase  { animation-delay: -5s; }
+.orbitMid    { animation: orbitFast 7s linear infinite; }
+.orbitPhase2 { animation-delay: -3.5s; }
+
+.orbitOuter .orbitDot { transform: translateX(90px); width: 6px; height: 6px; }
+.orbitMid .orbitDot   {
+  transform: translateX(65px);
+  width: 5px;
+  height: 5px;
+  background: var(--accent-blue);
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.8);
+}
+
+/* ─── Icon wrapper (shield / custom logo) ─────────────────────── */
+.iconWrap {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: breathe 4s ease-in-out infinite;
+  filter: drop-shadow(0 0 18px rgba(6, 182, 212, 0.35));
+}
+
+/* Default shield SVG */
+.iconSvg {
+  width: 108px;
+  height: 126px;
+  display: block;
+}
+
+/* Custom logo passed as a URL string */
+.logoImg {
+  max-width: 108px;
+  max-height: 108px;
+  width: auto;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
+/* ─── Wordmark & tagline ──────────────────────────────────────── */
+.wordmark {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.wordmarkName { color: var(--text-primary); }
+.wordmarkAuth { color: var(--accent-primary); }
+
+.tagline {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.taglineSubtext {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+  text-align: center;
+  max-width: 260px;
+  line-height: 1.5;
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Keyframe animations ─────────────────────────────────────── */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.045); }
+}
+
+@keyframes ringPulse {
+  0%, 100% { transform: scale(0.96); opacity: 0.8; }
+  50%       { transform: scale(1.04); opacity: 0.3; }
+}
+
+@keyframes orbitSlow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes orbitFast {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}

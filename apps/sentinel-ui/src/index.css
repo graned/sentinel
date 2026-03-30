@@ -1,0 +1,217 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* ─── Backgrounds ─────────────────────────────────────────── */
+  --bg-base: #070d1a;
+  --bg-surface: #0d1526;
+  --bg-elevated: #111d35;
+  --bg-hover: #162040;
+
+  /* ─── Borders ─────────────────────────────────────────────── */
+  --border-subtle: #1e2d4a;
+  --border-muted: #253550;
+  --border-active: #0ea5e9;
+  --border-glow: rgba(6, 182, 212, 0.25);
+
+  /* ─── Accent colors ───────────────────────────────────────── */
+  --accent-primary: #06b6d4;
+  --accent-primary-hover: #0891b2;
+  --accent-blue: #3b82f6;
+  --accent-blue-hover: #2563eb;
+
+  /* ─── Text ────────────────────────────────────────────────── */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  --text-code: #7dd3fc;
+
+  /* ─── Semantic colors ─────────────────────────────────────── */
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --danger-border: rgba(239, 68, 68, 0.3);
+
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --success-border: rgba(16, 185, 129, 0.3);
+
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --warning-border: rgba(245, 158, 11, 0.3);
+
+  --info: #3b82f6;
+  --info-bg: rgba(59, 130, 246, 0.1);
+  --info-border: rgba(59, 130, 246, 0.3);
+
+  /* ─── Radius ──────────────────────────────────────────────── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+
+  /* ─── Shadows ─────────────────────────────────────────────── */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border-subtle);
+  --shadow-glow: 0 0 20px rgba(6, 182, 212, 0.08);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border-subtle);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.4);
+
+  /* ─── Transitions ─────────────────────────────────────────── */
+  --transition: 0.15s ease;
+  --transition-slow: 0.25s ease;
+
+  /* ─── Typography ──────────────────────────────────────────── */
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, "SF Mono", monospace;
+
+  /* ─── Gradients ───────────────────────────────────────────── */
+  --gradient-brand: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+  --gradient-hero: linear-gradient(160deg, #0d1a3a 0%, #070d1a 60%);
+  --gradient-card: linear-gradient(135deg, #111d35 0%, #0d1526 100%);
+
+  /* ─── Glow levels ─────────────────────────────────────────── */
+  --glow-xs: 0 0 8px rgba(6, 182, 212, 0.15);
+  --glow-sm: 0 0 16px rgba(6, 182, 212, 0.2);
+  --glow-md: 0 0 30px rgba(6, 182, 212, 0.25);
+  --glow-lg: 0 0 60px rgba(6, 182, 212, 0.18);
+
+  /* ─── Chart / trend colors ────────────────────────────────── */
+  --chart-line: #06b6d4;
+  --chart-area: rgba(6, 182, 212, 0.12);
+  --trend-up: #10b981;
+  --trend-down: #ef4444;
+
+  /* ─── Hero section ────────────────────────────────────────── */
+  --hero-bg-start: #0d1a3a;
+  --hero-bg-end: #070d1a;
+  --hero-accent-opacity: rgba(6, 182, 212, 0.06);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-muted);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-muted) var(--bg-base);
+}
+
+/* ─── Focus ───────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* ─── Form Controls ───────────────────────────────────────────── */
+input,
+select,
+textarea {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.875rem;
+  padding: 0.55rem 0.75rem;
+  width: 100%;
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 3px var(--border-glow);
+}
+
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2rem;
+  cursor: pointer;
+}
+
+/* Dark option elements */
+option {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+  accent-color: var(--accent-primary);
+}
+
+/* ─── Typography helpers ──────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+p {
+  margin: 0;
+}
+
+code,
+pre {
+  font-family: var(--font-mono);
+}
+
+/* ─── Link reset ──────────────────────────────────────────────── */
+a {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}

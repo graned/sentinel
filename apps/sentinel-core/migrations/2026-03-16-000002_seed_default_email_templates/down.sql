@@ -1,0 +1,2 @@
+-- Seed data cannot be safely reversed without risking deletion of user-customized templates.
+-- This migration is intentionally a no-op.

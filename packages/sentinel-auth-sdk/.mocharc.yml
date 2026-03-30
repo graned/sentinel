@@ -1,0 +1,12 @@
+# TypeScript support via tsx (no separate compilation step needed)
+require:
+  - tsx/cjs
+
+# Default: run all tests; individual suites use test:unit / test:integration scripts
+spec: 'tests/**/*.test.ts'
+
+# Integration tests talk to Docker — allow time for cold network calls
+timeout: 15000
+
+# Show full diff on assertion failures
+reporter: spec

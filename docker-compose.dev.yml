@@ -1,0 +1,98 @@
+services:
+  # Rust Backend API
+  sentinel-core:
+    container_name: sentinel-core
+    build:
+      context: .
+      dockerfile: apps/sentinel-core/Dockerfile.dev
+    ports:
+      - "9000:8000"
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/sentinel_auth
+      - HEX_KEY=32a8c0fc962ce0299e8f5dedb1ff75b7e8789416db8f6836fb91c6e7bd2e58fe
+      - CONFIG_ENCRYPTION_KEY=02b96ece27c893f176d52139c17ef97db53283a3b0a75e185c2a9da7c1855db5
+      - RUST_BACKTRACE=1
+      - OIDC_ISSUER_URL=http://localhost:8080
+      - FRONTEND_URL=http://localhost:3000
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000
+    volumes:
+      - ./Cargo.toml:/app/Cargo.toml:ro
+      - ./apps/sentinel-core:/app/apps/sentinel-core
+      - ./packages/sentinel-policy-engine:/app/packages/sentinel-policy-engine
+      - cargo-cache:/usr/local/cargo/registry
+      - cargo-target:/app/target
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - app-network
+  # Management UI
+  sentinel-ui:
+    container_name: sentinel-ui
+    build:
+      context: .
+      dockerfile: apps/sentinel-ui/Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:9000
+    volumes:
+      - ./apps/sentinel-ui/src:/app/src
+      - ./apps/sentinel-ui/public:/app/public
+      - ./apps/sentinel-ui/index.html:/app/index.html
+      - ./apps/sentinel-ui/vite.config.ts:/app/vite.config.ts
+      - ./apps/sentinel-ui/tsconfig.json:/app/tsconfig.json
+      - ./apps/sentinel-ui/tsconfig.app.json:/app/tsconfig.app.json
+      - ./apps/sentinel-ui/tsconfig.node.json:/app/tsconfig.node.json
+    depends_on:
+      - sentinel-core
+    networks:
+      - app-network
+  # Database
+  postgres:
+    container_name: sentinel-auth-db
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: sentinel_auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+  # Run Diesel migrations once after postgres is ready
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/sentinel-core/Dockerfile.migrate
+    command: sh -c "cd apps/sentinel-core && diesel migration run"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/sentinel_auth
+    volumes:
+      - ./apps/sentinel-core:/app/apps/sentinel-core
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: "no"
+
+volumes:
+  postgres_data:
+  cargo-cache:
+  cargo-target:
+
+networks:
+  app-network:
+    driver: bridge

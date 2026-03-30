@@ -1,0 +1,102 @@
+[package]
+name = "sentinel-core"
+version = "0.1.0"
+edition = "2021"
+authors = ["Eduardo Anaya <anayamaster@gmail.com>"]
+description = "A Rust application to handle Auth as a Service"
+license = "AGPL-3.0-only"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# UUID
+uuid = { version = "1.0", features = ["v4", "serde"] }
+dotenvy = "0.15"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Utilities
+anyhow = "1.0"
+thiserror = "1.0"
+bb8 = "0.8"       # Connection pool
+
+# Web framework
+axum = { version = "0.8", features = ["tokio"] }
+axum-extra = { version = "0.12", features = ["typed-header"] }
+headers = "0.4"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace", "catch-panic", "set-header"] }
+
+# Database
+diesel = { version = "2.1.0", features = [
+	"postgres",
+	"uuid",
+	"chrono",
+	"serde_json",
+] }
+diesel-async = { version = "0.4.0", features = ["postgres", "bb8"] } # For async
+diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
+
+# Validation
+validator = { version = "0.16", features = ["derive"] }
+futures = "0.3.31"
+
+# auth tokens
+rusty_paseto = { version = "0.9", features = [
+	"batteries_included",
+	"v4_local",
+] }
+rand = "0.8"
+base64 = "0.22"
+sha2 = "0.10"
+hex = "0.4"
+
+# Encryption
+chacha20poly1305 = { version = "0.10", features = ["std"] }
+
+# JWT / OIDC
+jsonwebtoken = "9"
+rsa = { version = "0.9", features = ["pem"] }
+
+# MFA / TOTP
+totp-rs = { version = "5", features = ["otpauth"] }
+
+# Email
+lettre = { version = "0.11", features = ["smtp-transport", "tokio1-native-tls", "builder"], default-features = false }
+
+# Security
+subtle = "2.5"
+governor = { version = "0.6", features = ["std", "dashmap"] }
+
+# OpenAPI / Swagger
+utoipa = { version = "5", features = ["axum_extras", "uuid", "chrono"] }
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
+
+# Policy engine
+sentinel-policy-engine = { path = "../../packages/sentinel-policy-engine" }
+
+# HTTP client (used for policy probe — outbound calls to customer apps)
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+[dev-dependencies]
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+criterion = { version = "0.5", features = ["html_reports"] }
+tokio-postgres = { version = "0.7", features = [] }
+
+[[bin]]
+name = "sentinel-core"
+path = "src/main.rs"
+
+[[bench]]
+name = "authz_benchmark"
+harness = false

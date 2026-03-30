@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" width="200" height="40">
+  <!-- Icon area: 40x40 tower icon scaled down to fit 40px height -->
+
+  <!-- Tower body -->
+  <rect x="11" y="14" width="14" height="18" rx="1.5" fill="#1a2d4a" stroke="#2a4a7a" stroke-width="0.8"/>
+
+  <!-- Battlement base -->
+  <rect x="10" y="12" width="16" height="3.5" rx="1" fill="#1e3452" stroke="#2a4a7a" stroke-width="0.8"/>
+
+  <!-- Battlements (3 merlons) -->
+  <rect x="10.5" y="8" width="3.5" height="5" rx="0.8" fill="#1e3452" stroke="#2a4a7a" stroke-width="0.7"/>
+  <rect x="16.25" y="8" width="3.5" height="5" rx="0.8" fill="#1e3452" stroke="#2a4a7a" stroke-width="0.7"/>
+  <rect x="22" y="8" width="3.5" height="5" rx="0.8" fill="#1e3452" stroke="#2a4a7a" stroke-width="0.7"/>
+
+  <!-- Signal arcs -->
+  <path d="M 18 7.5 m -5 0 a 5 5 0 0 1 10 0" fill="none" stroke="#22D3EE" stroke-width="1" stroke-linecap="round" opacity="0.75"/>
+  <path d="M 18 7.5 m -8 0 a 8 8 0 0 1 16 0" fill="none" stroke="#22D3EE" stroke-width="0.8" stroke-linecap="round" opacity="0.4"/>
+  <circle cx="18" cy="7.5" r="1.2" fill="#22D3EE" opacity="0.9"/>
+
+  <!-- Lock body -->
+  <rect x="13" y="18" width="10" height="9" rx="1.5" fill="#0d1f33" stroke="#22D3EE" stroke-width="1"/>
+
+  <!-- Lock shackle -->
+  <path d="M 14.5 18 L 14.5 15.5 a 3.5 3.5 0 0 1 7 0 L 21.5 18" fill="none" stroke="#22D3EE" stroke-width="1.2" stroke-linecap="round"/>
+
+  <!-- Keyhole -->
+  <circle cx="18" cy="22" r="1.6" fill="#22D3EE"/>
+  <circle cx="18" cy="22" r="0.8" fill="#0d1f33"/>
+  <rect x="17.35" y="22.6" width="1.3" height="2.5" rx="0.4" fill="#0d1f33"/>
+
+  <!-- Platform -->
+  <rect x="9" y="32" width="18" height="2" rx="1" fill="#1a2d4a" stroke="#2a4a7a" stroke-width="0.6"/>
+
+  <!-- "Sentinel" text -->
+  <text x="44" y="25" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15" font-weight="600" fill="#E5E7EB" letter-spacing="-0.3">Sentinel</text>
+</svg>
