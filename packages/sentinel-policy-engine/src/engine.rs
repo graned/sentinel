@@ -111,10 +111,10 @@ impl PolicyEngine {
             let prec = seg.precedence();
 
             // Stop if we've moved past the tightest precedence level
-            if let Some(p) = tightest_non_glob_precedence {
-                if prec > p {
-                    break;
-                }
+            if let Some(p) = tightest_non_glob_precedence
+                && prec > p
+            {
+                break;
             }
 
             tightest_non_glob_precedence = Some(prec);
