@@ -655,6 +655,69 @@ See `packages/sentinel-auth-react/CLAUDE.md` for full developer reference.
 
 ---
 
+## Production Docker Setup
+
+### Dockerfiles
+
+| File | Purpose |
+|------|---------|
+| `apps/sentinel-core/Dockerfile` | Multi-stage production build: compiles the Rust binary in `rust:1.91-slim`, copies only the binary + runtime libs into `debian:bookworm-slim`. Includes a dependency-caching layer so rebuilds after source changes skip recompiling dependencies. |
+| `apps/sentinel-core/Dockerfile.dev` | Dev image: adds `cargo-watch` for hot-reload; maps source as volumes. |
+| `apps/sentinel-core/Dockerfile.migrate` | Minimal image that only contains `diesel_cli`; used by the `migrate` service. |
+| `apps/sentinel-ui/Dockerfile` | Four-stage build: sdk-builder → auth-react-builder → ui-builder (Vite) → `nginx:1.27-alpine` serving static files. `VITE_API_URL` is passed as a build arg and baked into the JS bundle. |
+| `apps/sentinel-ui/Dockerfile.dev` | Dev image: serves the Vite dev server with hot-reload; proxies `/v1` to the backend. |
+| `apps/sentinel-ui/nginx.conf` | SPA nginx config: `try_files` fallback to `index.html`, long-lived cache headers for hashed assets, gzip, `server_tokens off`. |
+
+### Production compose (`docker-compose.yml`)
+
+No hardcoded values — every variable is read from the environment or a `.env` file.
+
+**Profiles:**
+
+| Command | Services started |
+|---------|-----------------|
+| `docker compose --profile db up -d` | postgres + migrate + sentinel-core + sentinel-ui |
+| `docker compose up -d` | migrate + sentinel-core + sentinel-ui (external DB via `DATABASE_URL`) |
+
+**Networks:**
+
+- `internal` — marked `internal: true`; postgres and inter-service traffic never reach the host directly
+- `external` — sentinel-core and sentinel-ui bind here for host/reverse-proxy access
+
+**Supplying environment variables:**
+
+```bash
+# Option A — .env file (recommended for single-server deployments)
+cp .env.example .env
+# edit .env with real values
+docker compose --profile db up -d
+
+# Option B — named env file per environment
+docker compose --env-file .env.prod up -d
+docker compose --env-file .env.staging up -d
+
+# Option C — shell environment (for CI/CD or secrets managers)
+export HEX_KEY=$(vault kv get -field=hex_key secret/sentinel)
+export CONFIG_ENCRYPTION_KEY=$(vault kv get -field=config_key secret/sentinel)
+# ... other vars
+docker compose up -d
+```
+
+**Key variables** (see `.env.example` for the full reference):
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `DATABASE_URL` | Yes | Full postgres connection string |
+| `HEX_KEY` | Yes | 32-byte hex — `openssl rand -hex 32` |
+| `CONFIG_ENCRYPTION_KEY` | Yes | 32-byte hex — `openssl rand -hex 32` |
+| `OIDC_ISSUER_URL` | Yes | Public URL of sentinel-core (used in JWT `iss` claim) |
+| `FRONTEND_URL` | Yes | Base URL of sentinel-ui (for email links) |
+| `CORS_ALLOWED_ORIGINS` | Yes | Comma-separated allowed origins |
+| `VITE_API_URL` | Yes | Public URL of sentinel-core **as seen from the browser** — baked into the UI image at build time |
+| `POSTGRES_PASSWORD` | If `--profile db` | Password for the bundled postgres container |
+
+> **`VITE_API_URL` is a build-time variable.** Changing it requires rebuilding the `sentinel-ui` image. When deploying behind a reverse proxy that exposes both services on the same origin, you can leave it empty and configure the proxy to forward `/v1` and `/oauth` to sentinel-core.
+
 ## CI / GitHub Actions
 
 Two workflow files in `.github/workflows/`. Each is path-filtered so it only runs when its own source changes — changing `sentinel-core` never triggers TypeScript checks and vice versa.

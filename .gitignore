@@ -1,4 +1,6 @@
 apps/sentinel-core/target
 .env
+.env.*
+!.env.example
 target/
 node_modules/

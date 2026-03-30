@@ -1,0 +1,129 @@
+# Production / deployment Docker Compose
+#
+# Environment variables are never hardcoded here.  Supply them via:
+#   • A .env file in this directory (copy .env.example and fill in values)
+#   • Shell environment: export VAR=value before running compose
+#   • A named env file:  docker compose --env-file .env.prod up -d
+#
+# Profiles
+# ────────
+#   (default)        sentinel-core + sentinel-ui + migrate
+#   --profile db     also starts the bundled PostgreSQL container
+#
+# Quick start (bundled database)
+# ──────────────────────────────
+#   cp .env.example .env   # fill in all required values
+#   docker compose --profile db up -d
+#
+# Production with external database
+# ───────────────────────────────────
+#   Set DATABASE_URL to point to your managed database, then:
+#   docker compose up -d
+
+services:
+
+  # ── Database (optional — use --profile db) ──────────────────────────────────
+  postgres:
+    profiles: [db]
+    image: postgres:15-alpine
+    container_name: sentinel-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sentinel_auth}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Migrations (runs once, exits) ───────────────────────────────────────────
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/sentinel-core/Dockerfile.migrate
+    container_name: sentinel-migrate
+    command: sh -c "cd apps/sentinel-core && diesel migration run"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    volumes:
+      - ./apps/sentinel-core/migrations:/app/apps/sentinel-core/migrations:ro
+    networks:
+      - internal
+    restart: "no"
+
+  # ── API (sentinel-core) ─────────────────────────────────────────────────────
+  sentinel-core:
+    build:
+      context: .
+      dockerfile: apps/sentinel-core/Dockerfile
+    image: sentinel-core:${IMAGE_TAG:-latest}
+    container_name: sentinel-core
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-9000}:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      HEX_KEY: ${HEX_KEY}
+      CONFIG_ENCRYPTION_KEY: ${CONFIG_ENCRYPTION_KEY}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      # APP_HOST / APP_PORT default to 0.0.0.0:8000 — override only if needed.
+      # APP_HOST: 0.0.0.0
+      # APP_PORT: "8000"
+      RUST_LOG: ${RUST_LOG:-info}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - internal
+      - external
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/v1/api/system/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── Management UI (sentinel-ui) ─────────────────────────────────────────────
+  sentinel-ui:
+    build:
+      context: .
+      dockerfile: apps/sentinel-ui/Dockerfile
+      args:
+        # VITE_API_URL is baked into the JS bundle at build time.
+        # Set this to the public URL where sentinel-core is reachable from
+        # the end-user's browser (e.g. https://api.auth.example.com).
+        VITE_API_URL: ${VITE_API_URL}
+    image: sentinel-ui:${IMAGE_TAG:-latest}
+    container_name: sentinel-ui
+    restart: unless-stopped
+    ports:
+      - "${UI_PORT:-3000}:80"
+    depends_on:
+      sentinel-core:
+        condition: service_healthy
+    networks:
+      - external
+
+# ── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+
+# ── Networks ─────────────────────────────────────────────────────────────────
+# internal: database + backend traffic, never exposed outside Docker.
+# external: traffic that needs to reach the host / reverse proxy.
+networks:
+  internal:
+    driver: bridge
+    internal: true
+  external:
+    driver: bridge
