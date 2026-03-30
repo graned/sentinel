@@ -655,6 +655,38 @@ See `packages/sentinel-auth-react/CLAUDE.md` for full developer reference.
 
 ---
 
+## CI / GitHub Actions
+
+Two workflow files in `.github/workflows/`. Each is path-filtered so it only runs when its own source changes — changing `sentinel-core` never triggers TypeScript checks and vice versa.
+
+| Workflow | File | Triggers on |
+|----------|------|-------------|
+| Rust CI | `ci-rust.yml` | `apps/sentinel-core/**`, `packages/sentinel-policy-engine/**`, `Cargo.toml`, `Cargo.lock` |
+| TypeScript CI | `ci-typescript.yml` | `packages/sentinel-auth-sdk/**`, `packages/sentinel-auth-react/**`, `apps/sentinel-ui/**` |
+
+### Rust CI jobs (parallel)
+
+- **lint** — `cargo fmt --check` + `cargo clippy -D warnings`
+- **test** — spins up a `postgres:15-alpine` service container, enables `pgcrypto`, runs `diesel migration run`, then `cargo test --workspace --locked`
+
+The test job sets all required env vars (`DATABASE_URL`, `HEX_KEY`, `CONFIG_ENCRYPTION_KEY`, `OIDC_ISSUER_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS`). The `diesel_cli` binary is cached by `Swatinem/rust-cache` so it is only compiled once.
+
+### TypeScript CI jobs (sequential — dependency chain)
+
+```
+sdk  →  auth-react  →  ui
+```
+
+Each job uploads its compiled `dist/` as a short-lived artifact (1-day retention). Downstream jobs download those artifacts before running `npm install`, so `file:` dependencies resolve correctly.
+
+- **sdk** — `npm ci` → `typecheck` → `build` → upload `sdk-dist`
+- **auth-react** — download `sdk-dist` → `npm install --legacy-peer-deps` → `typecheck` → `build` → upload `auth-react-dist`
+- **ui** — download both dists → `npm install --legacy-peer-deps` → `tsc --noEmit` → `npm run build`
+
+### Free-tier minute budget
+
+Rust lint and test run in parallel, so the wall-clock cost of a core change is roughly `max(lint_time, test_time)`. TypeScript jobs are sequential but each is fast (no compilation server needed). Changing only one package still runs the full chain because `ui` depends on both packages — this is intentional to catch breakage early.
+
 ## Code Style & Patterns
 
 This section documents the concrete patterns used throughout `sentinel-core`. Follow them exactly when adding new code.
