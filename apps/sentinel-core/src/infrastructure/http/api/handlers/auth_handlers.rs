@@ -61,7 +61,7 @@ pub async fn authenticate(
     ValidatedBearer(access_token): ValidatedBearer,
 ) -> Result<RawResponse<AuthContextResponse>, ApiError> {
     let request = AuthenticateRequest {
-        access_token: access_token,
+        access_token,
     };
     match state.auth_application.authenticate_token(request).await {
         Ok(res) => {

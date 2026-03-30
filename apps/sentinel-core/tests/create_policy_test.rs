@@ -1,7 +1,7 @@
 mod common;
 
 use common::{
-    helpers::{admin_login, assert_error_envelope, post_json, read_json},
+    helpers::{admin_login, assert_error_envelope, read_json},
     setup::get_create_policy_url,
 };
 use reqwest::Client;

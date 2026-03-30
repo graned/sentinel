@@ -44,6 +44,7 @@ impl OidcAuthCodeService {
     ///
     /// Returns the **raw** code (not the hash) so it can be embedded in the redirect URL.
     /// The raw code must never be stored — only the SHA-256 hash is persisted.
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_code(
         &self,
         conn: &mut DbConnection<'_>,

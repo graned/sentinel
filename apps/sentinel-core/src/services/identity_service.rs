@@ -53,7 +53,7 @@ impl IdentityService {
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
 
-        if existing_identity.len() > 0 {
+        if !existing_identity.is_empty() {
             return Err(ServiceError::ValidationError(format!(
                 "User with email {} already exists",
                 email_to_verify

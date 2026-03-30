@@ -75,7 +75,7 @@ impl UserRoleService {
             .find_where(conn, type_.eq(role_type.clone()))
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
-        if found_role.len() == 0 {
+        if found_role.is_empty() {
             return Err(ServiceError::InternalError(format!(
                 "Missing role {:#?}",
                 role_type
@@ -92,7 +92,7 @@ impl UserRoleService {
     ) -> Result<Vec<Role>, ServiceError> {
         let user_roles = self
             .user_role_repository
-            .find_where(conn, user_id.eq(user.user_id.clone()))
+            .find_where(conn, user_id.eq(user.user_id))
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
 
@@ -102,12 +102,10 @@ impl UserRoleService {
             return Ok(vec![]);
         }
 
-        let roles = self
-            .role_repository
+        self.role_repository
             .find_where(conn, role_id.eq_any(role_ids))
             .await
-            .map_err(|e| ServiceError::DatabaseError(e.to_string()));
-        Ok(roles?)
+            .map_err(|e| ServiceError::DatabaseError(e.to_string()))
     }
 
     pub async fn get_roles_by_user_id(

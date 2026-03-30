@@ -419,9 +419,9 @@ impl From<GenericParserError> for ServiceError {
     fn from(err: GenericParserError) -> Self {
         tracing::error!("PASETO parser error: {:?}", err);
         match err {
-            GenericParserError::ClaimError { source }
-                if matches!(source, PasetoClaimError::Expired) =>
-            {
+            GenericParserError::ClaimError {
+                source: PasetoClaimError::Expired,
+            } => {
                 ServiceError::ExpiredTokenError("Token expired".into())
             }
             _ => ServiceError::InvalidTokenError("Token parsing failed".into()),

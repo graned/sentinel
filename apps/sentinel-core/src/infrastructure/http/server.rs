@@ -69,7 +69,7 @@ impl HttpServer {
         tracing::info!("Server running on http://{}:{}", addr, port);
 
         // Start the server
-        let _ = axum::serve(listener, Shared::new(self.router.clone()))
+        axum::serve(listener, Shared::new(self.router.clone()))
             .with_graceful_shutdown(async {
                 // Wait for shutdown signal
                 tokio::signal::ctrl_c()

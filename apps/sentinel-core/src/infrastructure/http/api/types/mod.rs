@@ -100,6 +100,12 @@ impl IntoResponse for ApiError {
 #[serde(transparent)] // serialize as a plain string
 pub struct RequestId(pub String);
 
+impl Default for RequestId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RequestId {
     pub fn new() -> Self {
         Self(Uuid::new_v4().to_string())

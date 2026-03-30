@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::{Validate, ValidationError};
 
-fn validate_checks_len(checks: &Vec<BatchCheckItem>) -> Result<(), ValidationError> {
+fn validate_checks_len(checks: &[BatchCheckItem]) -> Result<(), ValidationError> {
     if checks.len() > 500 {
         let mut e = ValidationError::new("too_many_checks");
         e.message = Some("checks array must not exceed 500 items".into());
@@ -27,7 +27,7 @@ pub struct PolicyRule {
 
 // ── Validators ────────────────────────────────────────────────────────────────
 
-fn validate_rules(rules: &Vec<PolicyRule>) -> Result<(), ValidationError> {
+fn validate_rules(rules: &[PolicyRule]) -> Result<(), ValidationError> {
     if rules.is_empty() {
         let mut e = ValidationError::new("empty_rules");
         e.message = Some("rules array must not be empty".into());

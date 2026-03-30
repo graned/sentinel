@@ -145,7 +145,7 @@ async fn wrap_response(response: Response, request_id: impl Into<RequestId>) -> 
                 timestamp: chrono::Utc::now(),
                 request_id: request_id.into(),
             };
-            return (StatusCode::OK, Json(api_response)).into_response();
+            (StatusCode::OK, Json(api_response)).into_response()
         }
         Err(_) => {
             // Not JSON or invalid JSON - check if it's a string

@@ -57,6 +57,7 @@ pub struct AuthApplication {
 }
 
 impl AuthApplication {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         pg_client: Arc<PostgresClient>,
         identity_service: Arc<IdentityService>,
@@ -90,7 +91,7 @@ impl AuthApplication {
         tracing::debug!("Authenticating token {}", request.access_token);
         let auth_context = self
             .session_service
-            .authenticate_session_token(&request.access_token.as_str())?;
+            .authenticate_session_token(request.access_token.as_str())?;
 
         let roles = auth_context
             .roles
@@ -184,7 +185,7 @@ impl AuthApplication {
 
         // Execute transaction — returns (response, identity_id) so we can trigger email after
         let (response, identity_id) = conn
-            .transaction(move |mut trx| {
+            .transaction(move |trx| {
                 let user_service = user_service.clone();
                 let user_role_service = user_role_service.clone();
                 let identity_service = identity_service.clone();
@@ -193,31 +194,31 @@ impl AuthApplication {
                 async move {
                     // Verify that email is available
                     identity_service
-                        .verify_email_availability(&mut trx, &request.email)
+                        .verify_email_availability(trx, &request.email)
                         .await?;
 
                     // Create user entity
                     let user_id = Uuid::new_v4();
                     let new_user = User {
-                        user_id: user_id.clone(),
+                        user_id,
                         first_name: Some(request.first_name.clone()),
                         last_name: Some(request.last_name.clone()),
                         avatar_url: request.avatar_url.clone(),
                         status: UserStatus::PendingVerification,
                         token_version: 0,
                         mfa_required: false,
-                        created_by: Some(user_id.clone()),
+                        created_by: Some(user_id),
                         created_at: Some(Utc::now()),
-                        updated_by: Some(user_id.clone()),
+                        updated_by: Some(user_id),
                         updated_at: Some(Utc::now()),
                     };
                     // Insert User
-                    let persisted_user = user_service.create_user(&mut trx, &new_user).await?;
+                    let persisted_user = user_service.create_user(trx, &new_user).await?;
                     // Create Identity entity
                     let identity_id = Uuid::new_v4();
                     let new_identity = UserIdentity {
-                        identity_id: identity_id.clone(),
-                        user_id: user_id.clone(),
+                        identity_id,
+                        user_id,
                         provider: IdentityProvider::EmailPassword,
                         provider_user_id: None,
                         email: request.email.clone(),
@@ -230,34 +231,34 @@ impl AuthApplication {
                         is_primary: false,
                         last_login_at: None,
                         must_change_password: false,
-                        created_by: Some(user_id.clone()),
+                        created_by: Some(user_id),
                         created_at: Some(Utc::now()),
-                        updated_by: Some(user_id.clone()),
+                        updated_by: Some(user_id),
                         updated_at: Some(Utc::now()),
                     };
 
                     // insert identity
                     identity_service
-                        .create_identity(&mut trx, &new_identity)
+                        .create_identity(trx, &new_identity)
                         .await?;
                     let role = user_role_service
-                        .get_role_by_type(&mut trx, RoleType::User)
+                        .get_role_by_type(trx, RoleType::User)
                         .await?;
                     let user_role = UserRole {
                         user_role_id: Uuid::new_v4(),
-                        user_id: new_user.user_id.clone(),
-                        role_id: role.role_id.clone(),
+                        user_id: new_user.user_id,
+                        role_id: role.role_id,
                         created_at: Utc::now(),
-                        created_by: Some(new_user.user_id.clone()),
+                        created_by: Some(new_user.user_id),
                     };
                     user_role_service
-                        .add_role_to_user(&mut trx, &user_role)
+                        .add_role_to_user(trx, &user_role)
                         .await?;
                     // add log message
                     tracing::debug!("User with email {} regisered successfully", request.email);
                     // Create and return User Response
                     let regiser_user_response = RegisterUserResponse {
-                        user_id: persisted_user.user_id.clone(),
+                        user_id: persisted_user.user_id,
                         first_name: persisted_user.first_name.clone().unwrap(),
                         last_name: persisted_user.last_name.clone().unwrap(),
                         avatar_url: persisted_user.avatar_url.clone(),
@@ -484,7 +485,7 @@ impl AuthApplication {
         let session_service = self.session_service.clone();
 
         let response = conn
-            .transaction(move |mut trx| {
+            .transaction(move |trx| {
                 let identity_service = identity_service.clone();
                 let user_service = user_service.clone();
                 let user_role_service = user_role_service.clone();
@@ -494,12 +495,12 @@ impl AuthApplication {
                 async move {
                     // 1. Validate the refresh token and retrieve the session
                     let session = session_service
-                        .validate_refresh_token(&mut trx, &request.refresh_token)
+                        .validate_refresh_token(trx, &request.refresh_token)
                         .await?;
 
                     // 2. Fetch user + identity + roles (needed to sign new PASETO token)
                     let user = user_service
-                        .find_user_by_id(&mut trx, session.user_id)
+                        .find_user_by_id(trx, session.user_id)
                         .await
                         .map_err(|e| ServiceError::DatabaseError(e.to_string()))?
                         .ok_or_else(|| {
@@ -507,13 +508,13 @@ impl AuthApplication {
                         })?;
 
                     let identity = identity_service
-                        .find_primary_identity_by_user_id(&mut trx, session.user_id)
+                        .find_primary_identity_by_user_id(trx, session.user_id)
                         .await?
                         .ok_or_else(|| {
                             ServiceError::AuthenticationError("Identity not found".to_string())
                         })?;
 
-                    let roles = user_role_service.get_user_roles(&mut trx, &user).await?;
+                    let roles = user_role_service.get_user_roles(trx, &user).await?;
 
                     // 3. Generate new token pair (same session_id — no new session row)
                     let new_tokens = session_service.generate_session_token(
@@ -526,7 +527,7 @@ impl AuthApplication {
                     // 4. Rotate: store new hash, reset expiry, update last_used_at
                     session_service
                         .rotate_session(
-                            &mut trx,
+                            trx,
                             session.session_id,
                             new_tokens.refresh_token_hash.clone(),
                         )
@@ -565,7 +566,7 @@ impl AuthApplication {
         let mfa_totp_service = self.mfa_totp_service.clone();
 
         let response = conn
-            .transaction(move |mut trx| {
+            .transaction(move |trx| {
                 let identity_service = identity_service.clone();
                 let user_service = user_service.clone();
                 let user_role_service = user_role_service.clone();
@@ -577,7 +578,7 @@ impl AuthApplication {
                     // Verify identity (credentials)
                     let found_identity = identity_service
                         .verify_identity_exists(
-                            &mut trx,
+                            trx,
                             request.email.as_str(),
                             request.password.as_str(),
                         )
@@ -585,7 +586,7 @@ impl AuthApplication {
 
                     // Fetch user
                     let user = user_service
-                        .find_user_by_id(&mut trx, found_identity.user_id)
+                        .find_user_by_id(trx, found_identity.user_id)
                         .await
                         .map_err(|e| ServiceError::DatabaseError(e.to_string()))?
                         .ok_or_else(|| {
@@ -594,7 +595,7 @@ impl AuthApplication {
 
                     // MFA gate: if TOTP enrolled and enabled, issue a challenge token
                     let mfa_enabled = mfa_totp_service
-                        .is_mfa_enabled(&mut trx, user.user_id)
+                        .is_mfa_enabled(trx, user.user_id)
                         .await?;
                     if mfa_enabled {
                         let mfa_token =
@@ -609,7 +610,7 @@ impl AuthApplication {
                     let mfa_setup_required = user.mfa_required && !mfa_enabled;
 
                     // Fetch user roles
-                    let user_roles = user_role_service.get_user_roles(&mut trx, &user).await?;
+                    let user_roles = user_role_service.get_user_roles(trx, &user).await?;
 
                     // Create session
                     let session_id = uuid::Uuid::new_v4();
@@ -632,11 +633,11 @@ impl AuthApplication {
                     let refresh_token = tokens.refresh_token.clone();
                     // Build session object
                     let new_session = Sessions {
-                        session_id: session_id,
-                        user_id: user.user_id.clone(),
-                        identity_id: found_identity.identity_id.clone(),
+                        session_id,
+                        user_id: user.user_id,
+                        identity_id: found_identity.identity_id,
                         refresh_token_hash,
-                        refresh_token_family: refresh_token_family,
+                        refresh_token_family,
                         refresh_token_expires_at: refresh_expires_at,
                         user_agent: None,
                         ip_address: None,
@@ -651,21 +652,21 @@ impl AuthApplication {
                     };
 
                     session_service
-                        .create_session(&mut trx, &new_session)
+                        .create_session(trx, &new_session)
                         .await
                         .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
 
                     tracing::info!(
                         "Valid Credentials for email: {}",
-                        found_identity.clone().email
+                        found_identity.email
                     );
 
                     // Return response
                     let response = BasicLoginResponse {
-                        user_id: user.user_id.clone(),
+                        user_id: user.user_id,
                         access_token,
                         refresh_token,
-                        expires_at: access_expires_at.clone(),
+                        expires_at: access_expires_at,
                         must_change_password: found_identity.must_change_password,
                         mfa_setup_required,
                     };

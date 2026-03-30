@@ -37,7 +37,7 @@ fn extract_request_id(headers: &HeaderMap) -> Option<RequestId> {
 }
 
 pub async fn request_id_middleware(mut req: Request<Body>, next: Next) -> Response {
-    let rid = extract_request_id(req.headers()).unwrap_or_else(RequestId::new);
+    let rid = extract_request_id(req.headers()).unwrap_or_default();
 
     // Put into request context so handlers/extractors can read it
     req.extensions_mut().insert(rid.clone());

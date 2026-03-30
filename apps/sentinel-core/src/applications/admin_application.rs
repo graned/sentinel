@@ -37,6 +37,7 @@ pub struct AdminApplication {
 }
 
 impl AdminApplication {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         pg_client: Arc<PostgresClient>,
         user_service: Arc<UserService>,
@@ -169,10 +170,11 @@ impl AdminApplication {
             .ok_or_else(|| ServiceError::NotFoundError("Role not found".to_string()))?;
 
         // Check for duplicate assignment
-        if let Some(_) = self
+        if self
             .user_role_service
             .find_user_role(&mut conn, user_id, req.role_id)
             .await?
+            .is_some()
         {
             return Err(ServiceError::InternalError(
                 "Role already assigned to user".to_string(),
@@ -296,7 +298,7 @@ impl AdminApplication {
     ) -> Result<PaginatedUsersResponse, ServiceError> {
         Self::require_admin(ctx)?;
         let page = query.page.unwrap_or(1).max(1);
-        let page_size = query.page_size.unwrap_or(20).max(1).min(100);
+        let page_size = query.page_size.unwrap_or(20).clamp(1, 100);
 
         let mut conn = self.pg_client.get_conn().await?;
         let (users, total) = self

@@ -8,7 +8,7 @@ use common::{
     },
 };
 use reqwest::Client;
-use serde_json::{json, Value};
+use serde_json::json;
 use totp_rs::TOTP;
 use uuid::Uuid;
 

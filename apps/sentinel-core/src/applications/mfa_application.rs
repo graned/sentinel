@@ -172,7 +172,7 @@ impl MfaApplication {
         let mfa_attempts = self.mfa_attempts.clone();
 
         let result = conn
-            .transaction(move |mut trx| {
+            .transaction(move |trx| {
                 let identity_service = identity_service.clone();
                 let user_service = user_service.clone();
                 let user_role_service = user_role_service.clone();
@@ -182,11 +182,11 @@ impl MfaApplication {
 
                 async move {
                     // Verify TOTP code (or recovery code)
-                    mfa_totp_service.verify(&mut trx, user_id, &code).await?;
+                    mfa_totp_service.verify(trx, user_id, &code).await?;
 
                     // Fetch user
                     let user = user_service
-                        .find_user_by_id(&mut trx, user_id)
+                        .find_user_by_id(trx, user_id)
                         .await
                         .map_err(|e| ServiceError::DatabaseError(e.to_string()))?
                         .ok_or_else(|| {
@@ -195,14 +195,14 @@ impl MfaApplication {
 
                     // Fetch identity (for session token claims)
                     let identity = identity_service
-                        .find_primary_identity_by_user_id(&mut trx, user_id)
+                        .find_primary_identity_by_user_id(trx, user_id)
                         .await?
                         .ok_or_else(|| {
                             ServiceError::AuthenticationError("Identity not found".to_string())
                         })?;
 
                     // Fetch roles
-                    let user_roles = user_role_service.get_user_roles(&mut trx, &user).await?;
+                    let user_roles = user_role_service.get_user_roles(trx, &user).await?;
 
                     // Generate tokens
                     let session_id = uuid::Uuid::new_v4();
@@ -238,7 +238,7 @@ impl MfaApplication {
                     };
 
                     session_service
-                        .create_session(&mut trx, &new_session)
+                        .create_session(trx, &new_session)
                         .await
                         .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
 
@@ -277,6 +277,6 @@ impl MfaApplication {
             Err(_) => {}
         }
 
-        Ok(result?)
+        result
     }
 }

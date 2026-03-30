@@ -293,7 +293,7 @@ impl SessionService {
         &self,
         user: &User,
         session_id: &Uuid,
-        roles: &Vec<Role>,
+        roles: &[Role],
         identity: &UserIdentity,
     ) -> Result<SessionTokens, ServiceError> {
         // exp claim requires RFC3339 string and uses TryFrom per docs

@@ -162,13 +162,6 @@ async fn bulk_revoke_admin_sessions_with_non_admin_user_returns_403() {
 
 // ── Input validation tests ────────────────────────────────────────────────────
 
-/// POST /v1/api/admin/sessions/revoke with empty session_ids array → 400.
-/// This is a pure input validation test — no admin token needed because the
-/// middleware rejects unauth'd requests before validation. We use a regular
-/// user token and expect 403, which still confirms the body reaches the
-/// validation layer.  The canonical validation test is covered in the
-/// admin happy-path block below.
-
 /// POST /v1/api/admin/sessions/revoke without a Bearer token and empty
 /// session_ids — server rejects auth before body validation, returns 401.
 #[tokio::test]

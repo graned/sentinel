@@ -53,6 +53,7 @@ pub struct OidcApplication {
 }
 
 impl OidcApplication {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         pg_client: Arc<PostgresClient>,
         client_service: Arc<OidcClientService>,

@@ -43,6 +43,7 @@ impl OidcTokenService {
     /// The `decrypted_private_der` must be PKCS#1 DER bytes from
     /// [`OidcKeyService::decrypt_private_key`].  The token is signed with RS256 and
     /// the `kid` header is set from `signing_key.kid`.
+    #[allow(clippy::too_many_arguments)]
     pub fn generate_id_token(
         &self,
         signing_key: &OidcSigningKey,

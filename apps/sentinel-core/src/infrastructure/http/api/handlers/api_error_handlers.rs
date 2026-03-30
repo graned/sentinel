@@ -35,7 +35,7 @@ pub async fn handle_global_error(err: BoxError) -> Response {
 
     let api_general_error = ApiError {
         code: "INTERNAL_SERVER_ERROR".to_string(),
-        message: format!("OPS! Something unexpected happen"),
+        message: "OPS! Something unexpected happen".to_string(),
         details: None,
         status: StatusCode::INTERNAL_SERVER_ERROR,
     };

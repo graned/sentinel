@@ -117,14 +117,14 @@ impl SystemApplication {
         let response = conn
             .transaction(move |trx| {
                 let config_service = config_service.clone();
-                let mut request = request;
+                let request = request;
 
                 async move {
                     // encrypt configuration
                     let config_encrypted = config_service.encrypt_config(&request.config)?;
                     tracing::debug!("Config encrypted!");
                     // create redacted config version
-                    let config_redacted = config_service.redact_config(&mut request.config);
+                    let config_redacted = config_service.redact_config(&request.config);
                     tracing::debug!("Config redacted! {:#?}", config_redacted);
                     let now = Utc::now();
                     // create config entity
@@ -132,7 +132,7 @@ impl SystemApplication {
                         configuration_id: Uuid::new_v4(),
                         tenant_id: request.tenant_id,
                         config_encrypted,
-                        config_redacted: config_redacted.into(),
+                        config_redacted,
                         is_active: request.is_active,
                         provider: request.provider,
                         created_by: Some(auth_context.user_id),

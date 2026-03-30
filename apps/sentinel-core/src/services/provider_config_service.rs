@@ -135,6 +135,7 @@ impl ProviderConfigurationService {
     /// The *key names* are preserved (so API consumers can see `"api_key"` vs
     /// `"password"` in the response and know which auth mode is configured),
     /// but their values are masked.  Arrays are redacted element-by-element.
+    #[allow(clippy::only_used_in_recursion)]
     pub fn redact_config(&self, config: &Value) -> Value {
         match config {
             Value::Object(map) => {
