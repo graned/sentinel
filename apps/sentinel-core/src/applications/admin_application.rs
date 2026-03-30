@@ -322,7 +322,14 @@ impl AdminApplication {
                 .map(|i| (i.email, i.email_verified.unwrap_or(false)))
                 .unwrap_or_else(|| (String::new(), false));
             let mfa_required = user.mfa_required;
-            items.push(Self::user_to_admin_response(user, email, email_verified, roles, mfa_enabled, mfa_required));
+            items.push(Self::user_to_admin_response(
+                user,
+                email,
+                email_verified,
+                roles,
+                mfa_enabled,
+                mfa_required,
+            ));
         }
         Ok(PaginatedUsersResponse {
             items,

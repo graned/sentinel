@@ -30,8 +30,8 @@
 
 use crate::{
     http::api::dtos::{
-        AuthenticatedUserContext, AuthorizeQuery, CreateOidcClientRequest, CreateOidcClientResponse,
-        GenerateKeyResponse, TokenExchangeForm, TokenResponse,
+        AuthenticatedUserContext, AuthorizeQuery, CreateOidcClientRequest,
+        CreateOidcClientResponse, GenerateKeyResponse, TokenExchangeForm, TokenResponse,
     },
     IdentityService, MfaTotpService, OidcAuthCodeService, OidcClient, OidcClientService,
     OidcKeyService, OidcTokenService, PostgresClient, ServiceError, UserService,
@@ -140,9 +140,7 @@ impl OidcApplication {
         // Build redirect URL
         let redirect_url = format!(
             "{}?code={}&state={}",
-            params.redirect_uri,
-            raw_code,
-            params.state
+            params.redirect_uri, raw_code, params.state
         );
 
         Ok(redirect_url)
@@ -170,7 +168,8 @@ impl OidcApplication {
         // Validate client secret for confidential clients
         if client.is_confidential {
             if let Some(secret) = &form.client_secret {
-                self.client_service.validate_client_secret(&client, secret)?;
+                self.client_service
+                    .validate_client_secret(&client, secret)?;
             } else {
                 return Err(ServiceError::OidcInvalidCode(
                     "client_secret is required for confidential clients".to_string(),
@@ -275,9 +274,10 @@ impl OidcApplication {
     ) -> Result<CreateOidcClientResponse, ServiceError> {
         let mut conn = self.pg_client.get_conn().await?;
 
-        let client_secret_hash = request.client_secret.as_ref().map(|s| {
-            format!("{:x}", Sha256::digest(s.as_bytes()))
-        });
+        let client_secret_hash = request
+            .client_secret
+            .as_ref()
+            .map(|s| format!("{:x}", Sha256::digest(s.as_bytes())));
 
         let client = OidcClient {
             oidc_client_id: Uuid::new_v4(),
@@ -292,7 +292,10 @@ impl OidcApplication {
             created_at: Utc::now(),
         };
 
-        let stored = self.client_service.create_client(&mut conn, &client).await?;
+        let stored = self
+            .client_service
+            .create_client(&mut conn, &client)
+            .await?;
 
         Ok(CreateOidcClientResponse {
             oidc_client_id: stored.oidc_client_id,

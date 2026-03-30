@@ -151,9 +151,7 @@ impl ApiTokenService {
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?
             .into_iter()
             .next()
-            .ok_or_else(|| {
-                ServiceError::AuthenticationError("Invalid API token".to_string())
-            })?;
+            .ok_or_else(|| ServiceError::AuthenticationError("Invalid API token".to_string()))?;
 
         if token.revoked_at.is_some() {
             return Err(ServiceError::AuthenticationError(

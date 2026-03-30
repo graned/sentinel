@@ -46,7 +46,14 @@ pub async fn list_email_templates(
         .email_template_application
         .list_templates(&ctx)
         .await
-        .map(|templates| RawResponse(templates.into_iter().map(EmailTemplateResponse::from).collect()))
+        .map(|templates| {
+            RawResponse(
+                templates
+                    .into_iter()
+                    .map(EmailTemplateResponse::from)
+                    .collect(),
+            )
+        })
         .map_err(ApiError::from)
 }
 
@@ -72,7 +79,13 @@ pub async fn create_email_template(
 ) -> Result<RawResponse<EmailTemplateResponse>, ApiError> {
     state
         .email_template_application
-        .create_template(&ctx, req.template_type, req.subject, req.body_text, req.body_html)
+        .create_template(
+            &ctx,
+            req.template_type,
+            req.subject,
+            req.body_text,
+            req.body_html,
+        )
         .await
         .map(|t| RawResponse(EmailTemplateResponse::from(t)))
         .map_err(ApiError::from)

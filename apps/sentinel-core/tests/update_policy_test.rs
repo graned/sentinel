@@ -75,7 +75,10 @@ async fn update_policy_rules_returns_next_version() {
 
     assert_eq!(status, 200, "expected 200, got {status}\n{raw}");
     assert_eq!(body["success"], true, "{body}");
-    assert!(body["error"].is_null(), "error must be null on success: {body}");
+    assert!(
+        body["error"].is_null(),
+        "error must be null on success: {body}"
+    );
 
     let data = &body["data"];
     assert!(data.is_object(), "data must be an object: {body}");
@@ -105,7 +108,11 @@ async fn update_policy_rules_increments_version_on_each_update() {
         .await
         .expect("request failed");
     let (_, body, _) = read_json(res).await;
-    assert_eq!(body["data"]["activated_version"].as_i64(), Some(2), "{body}");
+    assert_eq!(
+        body["data"]["activated_version"].as_i64(),
+        Some(2),
+        "{body}"
+    );
 
     // Second update → version 3
     let res = client
@@ -118,7 +125,11 @@ async fn update_policy_rules_increments_version_on_each_update() {
     let (status, body, raw) = read_json(res).await;
 
     assert_eq!(status, 200, "expected 200, got {status}\n{raw}");
-    assert_eq!(body["data"]["activated_version"].as_i64(), Some(3), "{body}");
+    assert_eq!(
+        body["data"]["activated_version"].as_i64(),
+        Some(3),
+        "{body}"
+    );
 }
 
 // ── Not found ─────────────────────────────────────────────────────────────────
@@ -138,7 +149,10 @@ async fn update_policy_rules_with_nonexistent_policy_id_returns_error() {
         .expect("request failed");
     let (status, body, raw) = read_json(res).await;
 
-    assert_eq!(status, 404, "expected 404 for unknown policy, got {status}\n{raw}");
+    assert_eq!(
+        status, 404,
+        "expected 404 for unknown policy, got {status}\n{raw}"
+    );
     assert_error_envelope(&body, "NOT_FOUND");
 }
 

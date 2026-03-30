@@ -58,12 +58,14 @@ pub async fn authenticate_middleware(
             session_id: auth_res.session_id,
             roles: auth_res.roles,
             bypass_authorization: true,
-            email_verified: true, // API tokens are trusted; no email gate
+            email_verified: true,        // API tokens are trusted; no email gate
             must_change_password: false, // API tokens skip forced-reset gate
         }
     } else {
         // ── PASETO session token path (existing behaviour) ────────────────
-        let request = AuthenticateRequest { access_token: raw_token };
+        let request = AuthenticateRequest {
+            access_token: raw_token,
+        };
         let auth_res = state.auth_application.authenticate_token(request).await?;
 
         tracing::debug!("Valid request, auth context for request {:#?}", auth_res);

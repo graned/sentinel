@@ -131,7 +131,10 @@ async fn login_without_mfa_returns_tokens_directly() {
     let (status, body, raw) = read_json(res).await;
 
     assert!(status == 200, "expected 200, got {status}\n{raw}");
-    assert_eq!(body.pointer("/success").and_then(|v| v.as_bool()), Some(true));
+    assert_eq!(
+        body.pointer("/success").and_then(|v| v.as_bool()),
+        Some(true)
+    );
 
     let data = &body["data"];
     assert!(
@@ -188,7 +191,9 @@ async fn login_with_mfa_enrolled_returns_challenge() {
         "expected mfa_required=true: {body}"
     );
     assert!(
-        data.get("mfa_session_token").and_then(|v| v.as_str()).is_some(),
+        data.get("mfa_session_token")
+            .and_then(|v| v.as_str())
+            .is_some(),
         "expected mfa_session_token: {body}"
     );
     assert!(
@@ -287,10 +292,7 @@ async fn verify_mfa_with_recovery_code_works_once() {
     )
     .await;
     let (status, body, raw) = read_json(res).await;
-    assert!(
-        status == 200,
-        "recovery code should work: {status}\n{raw}"
-    );
+    assert!(status == 200, "recovery code should work: {status}\n{raw}");
     assert!(
         body.pointer("/data/access_token").is_some(),
         "expected access_token after MFA verify: {body}"
@@ -378,9 +380,6 @@ async fn mfa_verify_attempt_limit_returns_429_on_6th_try() {
     )
     .await;
     let (status, body, raw) = read_json(res).await;
-    assert_eq!(
-        status, 429,
-        "6th attempt should be rate-limited: {raw}"
-    );
+    assert_eq!(status, 429, "6th attempt should be rate-limited: {raw}");
     assert_error_envelope(&body, "MFA_ATTEMPT_LIMIT_EXCEEDED");
 }

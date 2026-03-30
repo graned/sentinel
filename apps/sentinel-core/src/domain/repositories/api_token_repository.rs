@@ -32,9 +32,7 @@ impl ApiTokenRepository {
         use crate::schema::api_tokens::token_hash as col_token_hash;
         use diesel::ExpressionMethods;
 
-        let results = self
-            .find_where(conn, col_token_hash.eq(hash))
-            .await?;
+        let results = self.find_where(conn, col_token_hash.eq(hash)).await?;
 
         Ok(results.into_iter().next())
     }

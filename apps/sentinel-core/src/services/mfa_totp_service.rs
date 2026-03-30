@@ -161,10 +161,9 @@ impl MfaTotpService {
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
 
-        let row = rows
-            .into_iter()
-            .next()
-            .ok_or_else(|| ServiceError::MfaNotEnrolled("MFA enrollment not started".to_string()))?;
+        let row = rows.into_iter().next().ok_or_else(|| {
+            ServiceError::MfaNotEnrolled("MFA enrollment not started".to_string())
+        })?;
 
         // Verify the TOTP code in a sync block
         let valid = {
@@ -184,7 +183,9 @@ impl MfaTotpService {
         };
 
         if !valid {
-            return Err(ServiceError::MfaInvalidCode("Invalid TOTP code".to_string()));
+            return Err(ServiceError::MfaInvalidCode(
+                "Invalid TOTP code".to_string(),
+            ));
         }
 
         // Clear previous recovery codes

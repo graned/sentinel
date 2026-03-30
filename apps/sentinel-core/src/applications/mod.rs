@@ -6,11 +6,11 @@
 //! directly; they never import services.
 
 pub mod admin_application;
-pub mod insights_application;
 pub mod admin_session_application;
 pub mod api_token_application;
 pub mod auth_application;
 pub mod email_template_application;
+pub mod insights_application;
 pub mod mfa_application;
 pub mod oidc_application;
 pub mod policy_application;
@@ -19,11 +19,11 @@ pub mod user_application;
 pub mod user_password_application;
 
 pub use admin_application::AdminApplication;
-pub use insights_application::InsightsApplication;
 pub use admin_session_application::AdminSessionApplication;
 pub use api_token_application::*;
 pub use auth_application::*;
 pub use email_template_application::*;
+pub use insights_application::InsightsApplication;
 pub use mfa_application::*;
 pub use oidc_application::*;
 pub use policy_application::*;

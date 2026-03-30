@@ -233,12 +233,24 @@ async fn admin_can_list_users() {
 
     let data = &body["data"];
     assert!(data["items"].is_array(), "data.items must be array: {body}");
-    assert!(data["total"].is_number(), "data.total must be a number: {body}");
-    assert!(data["page"].is_number(), "data.page must be a number: {body}");
-    assert!(data["page_size"].is_number(), "data.page_size must be a number: {body}");
+    assert!(
+        data["total"].is_number(),
+        "data.total must be a number: {body}"
+    );
+    assert!(
+        data["page"].is_number(),
+        "data.page must be a number: {body}"
+    );
+    assert!(
+        data["page_size"].is_number(),
+        "data.page_size must be a number: {body}"
+    );
 
     let total = data["total"].as_i64().unwrap_or(0);
-    assert!(total >= 1, "should have at least the seeded admin user: {body}");
+    assert!(
+        total >= 1,
+        "should have at least the seeded admin user: {body}"
+    );
 }
 
 /// Admin full lifecycle: create user → list contains new user → update status → delete.
@@ -267,12 +279,17 @@ async fn admin_user_lifecycle() {
     assert_eq!(body["success"], true, "{body}");
 
     let data = &body["data"];
-    let user_id_str = data["user_id"].as_str().unwrap_or_else(|| panic!("missing user_id: {body}"));
+    let user_id_str = data["user_id"]
+        .as_str()
+        .unwrap_or_else(|| panic!("missing user_id: {body}"));
     let user_id: Uuid = user_id_str.parse().expect("user_id is not a valid UUID");
     assert_eq!(data["email"].as_str(), Some(email.as_str()), "{body}");
     // Newly created users start as pending_verification until email is confirmed
     assert!(
-        matches!(data["status"].as_str(), Some("active") | Some("pending_verification")),
+        matches!(
+            data["status"].as_str(),
+            Some("active") | Some("pending_verification")
+        ),
         "unexpected status: {body}"
     );
 

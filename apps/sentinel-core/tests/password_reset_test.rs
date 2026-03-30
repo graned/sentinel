@@ -3,8 +3,8 @@ mod common;
 use common::{
     helpers::{assert_error_envelope, post_json, read_json},
     setup::{
-        get_change_password_url, get_forgot_password_url, get_register_user_url, get_reset_password_url,
-        get_server_url,
+        get_change_password_url, get_forgot_password_url, get_register_user_url,
+        get_reset_password_url, get_server_url,
     },
 };
 use reqwest::Client;
@@ -38,8 +38,7 @@ async fn register_user(client: &Client) -> (String, String) {
 async fn mark_email_verified(email: &str) {
     use dotenvy::dotenv;
     dotenv().ok();
-    let db_url =
-        std::env::var("DATABASE_URL").expect("DATABASE_URL not set");
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set");
     let (client, connection) = tokio_postgres::connect(&db_url, tokio_postgres::NoTls)
         .await
         .expect("DB connection failed");
@@ -185,7 +184,10 @@ async fn change_password_wrong_current_returns_401() {
         .await
         .expect("request failed");
     let (status, body, raw) = read_json(res).await;
-    assert_eq!(status, 401, "expected 401 for wrong current password: {raw}");
+    assert_eq!(
+        status, 401,
+        "expected 401 for wrong current password: {raw}"
+    );
     assert_error_envelope(&body, "AUTH_ERROR");
 }
 

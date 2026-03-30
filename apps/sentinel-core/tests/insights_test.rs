@@ -227,14 +227,38 @@ async fn stats_as_admin_returns_summary_shape() {
     assert_eq!(body["success"], true, "{body}");
 
     let data = &body["data"];
-    assert!(data["total_users"].is_number(), "missing total_users: {body}");
-    assert!(data["new_users_week"].is_number(), "missing new_users_week: {body}");
-    assert!(data["new_users_month"].is_number(), "missing new_users_month: {body}");
-    assert!(data["active_users_week"].is_number(), "missing active_users_week: {body}");
-    assert!(data["active_users_month"].is_number(), "missing active_users_month: {body}");
-    assert!(data["active_sessions"].is_number(), "missing active_sessions: {body}");
-    assert!(data["mfa_adoption_pct"].is_number(), "missing mfa_adoption_pct: {body}");
-    assert!(data["email_verified_pct"].is_number(), "missing email_verified_pct: {body}");
+    assert!(
+        data["total_users"].is_number(),
+        "missing total_users: {body}"
+    );
+    assert!(
+        data["new_users_week"].is_number(),
+        "missing new_users_week: {body}"
+    );
+    assert!(
+        data["new_users_month"].is_number(),
+        "missing new_users_month: {body}"
+    );
+    assert!(
+        data["active_users_week"].is_number(),
+        "missing active_users_week: {body}"
+    );
+    assert!(
+        data["active_users_month"].is_number(),
+        "missing active_users_month: {body}"
+    );
+    assert!(
+        data["active_sessions"].is_number(),
+        "missing active_sessions: {body}"
+    );
+    assert!(
+        data["mfa_adoption_pct"].is_number(),
+        "missing mfa_adoption_pct: {body}"
+    );
+    assert!(
+        data["email_verified_pct"].is_number(),
+        "missing email_verified_pct: {body}"
+    );
 
     // Sanity: at least 1 user (the seeded admin)
     assert!(
@@ -262,7 +286,9 @@ async fn user_growth_as_admin_returns_array_shape() {
     assert_eq!(status, 200, "expected 200, got {status}\n{raw}");
     assert_eq!(body["success"], true, "{body}");
 
-    let data = body["data"].as_array().unwrap_or_else(|| panic!("data must be array: {body}"));
+    let data = body["data"]
+        .as_array()
+        .unwrap_or_else(|| panic!("data must be array: {body}"));
 
     // At least one data point must exist (the seeded admin was created)
     assert!(!data.is_empty(), "expected at least one data point: {body}");
@@ -270,8 +296,14 @@ async fn user_growth_as_admin_returns_array_shape() {
     // Every returned point must have the correct fields
     for point in data {
         assert!(point["date"].is_string(), "missing date in point: {point}");
-        assert!(point["total_users"].is_number(), "missing total_users in point: {point}");
-        assert!(point["new_users"].is_number(), "missing new_users in point: {point}");
+        assert!(
+            point["total_users"].is_number(),
+            "missing total_users in point: {point}"
+        );
+        assert!(
+            point["new_users"].is_number(),
+            "missing new_users in point: {point}"
+        );
     }
 }
 
@@ -294,7 +326,9 @@ async fn sessions_activity_as_admin_returns_array_shape() {
     assert_eq!(status, 200, "expected 200, got {status}\n{raw}");
     assert_eq!(body["success"], true, "{body}");
 
-    let data = body["data"].as_array().unwrap_or_else(|| panic!("data must be array: {body}"));
+    let data = body["data"]
+        .as_array()
+        .unwrap_or_else(|| panic!("data must be array: {body}"));
 
     // At least one data point must exist (sessions are created by the tests themselves)
     assert!(!data.is_empty(), "expected at least one data point: {body}");
@@ -302,7 +336,13 @@ async fn sessions_activity_as_admin_returns_array_shape() {
     // Every returned point must have the correct fields
     for point in data {
         assert!(point["date"].is_string(), "missing date in point: {point}");
-        assert!(point["sessions_created"].is_number(), "missing sessions_created in point: {point}");
-        assert!(point["unique_users"].is_number(), "missing unique_users in point: {point}");
+        assert!(
+            point["sessions_created"].is_number(),
+            "missing sessions_created in point: {point}"
+        );
+        assert!(
+            point["unique_users"].is_number(),
+            "missing unique_users in point: {point}"
+        );
     }
 }

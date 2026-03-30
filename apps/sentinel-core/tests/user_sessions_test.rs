@@ -219,7 +219,10 @@ async fn get_permissions_returns_user_roles() {
     assert_eq!(body["success"], true);
 
     let data = &body["data"];
-    assert!(data["user_id"].as_str().is_some(), "missing user_id: {body}");
+    assert!(
+        data["user_id"].as_str().is_some(),
+        "missing user_id: {body}"
+    );
 
     let roles = data["roles"].as_array().expect("roles must be array");
     assert!(!roles.is_empty(), "expected at least one role");
@@ -228,5 +231,8 @@ async fn get_permissions_returns_user_roles() {
     assert!(first["role_id"].as_str().is_some(), "missing role_id");
     assert!(first["name"].as_str().is_some(), "missing name");
     assert!(first["role_type"].as_str().is_some(), "missing role_type");
-    assert!(first["description"].as_str().is_some(), "missing description");
+    assert!(
+        first["description"].as_str().is_some(),
+        "missing description"
+    );
 }

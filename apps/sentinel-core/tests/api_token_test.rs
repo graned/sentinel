@@ -243,12 +243,24 @@ async fn create_api_token_as_admin_returns_raw_token() {
     assert_eq!(body["success"], true, "{body}");
 
     let data = &body["data"];
-    assert!(data["api_token_id"].is_string(), "missing api_token_id: {body}");
+    assert!(
+        data["api_token_id"].is_string(),
+        "missing api_token_id: {body}"
+    );
     assert_eq!(data["name"].as_str(), Some("ci-bot"), "{body}");
 
-    let raw_token = data["token"].as_str().unwrap_or_else(|| panic!("missing token: {body}"));
-    assert!(raw_token.starts_with("sat_"), "token must start with sat_: {raw_token}");
-    assert_eq!(raw_token.len(), 68, "sat_ prefix + 64 hex chars: {raw_token}");
+    let raw_token = data["token"]
+        .as_str()
+        .unwrap_or_else(|| panic!("missing token: {body}"));
+    assert!(
+        raw_token.starts_with("sat_"),
+        "token must start with sat_: {raw_token}"
+    );
+    assert_eq!(
+        raw_token.len(),
+        68,
+        "sat_ prefix + 64 hex chars: {raw_token}"
+    );
 }
 
 /// Full lifecycle: create → list → revoke single → list again → revoke all → list empty.
@@ -292,7 +304,9 @@ async fn api_token_full_lifecycle() {
         .expect("request failed");
     let (status, body, raw) = read_json(res).await;
     assert_eq!(status, 200, "list failed: {raw}");
-    let items = body["data"].as_array().unwrap_or_else(|| panic!("data must be array: {body}"));
+    let items = body["data"]
+        .as_array()
+        .unwrap_or_else(|| panic!("data must be array: {body}"));
     assert!(items.len() >= 2, "expected at least 2 tokens: {body}");
 
     // Revoke token A
@@ -325,7 +339,12 @@ async fn api_token_full_lifecycle() {
         .expect("request failed");
     let (status, body, raw) = read_json(res).await;
     assert_eq!(status, 200, "list after revoke-all failed: {raw}");
-    let items = body["data"].as_array().unwrap_or_else(|| panic!("data must be array: {body}"));
+    let items = body["data"]
+        .as_array()
+        .unwrap_or_else(|| panic!("data must be array: {body}"));
     let active: Vec<_> = items.iter().filter(|t| t["revoked_at"].is_null()).collect();
-    assert!(active.is_empty(), "expected no active tokens after revoke-all: {body}");
+    assert!(
+        active.is_empty(),
+        "expected no active tokens after revoke-all: {body}"
+    );
 }

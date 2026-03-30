@@ -67,8 +67,14 @@ async fn token_refresh_returns_new_token_pair() {
 
     let new_access = body["data"]["access_token"].as_str();
     let new_refresh = body["data"]["refresh_token"].as_str();
-    assert!(new_access.is_some(), "missing access_token in response: {body}");
-    assert!(new_refresh.is_some(), "missing refresh_token in response: {body}");
+    assert!(
+        new_access.is_some(),
+        "missing access_token in response: {body}"
+    );
+    assert!(
+        new_refresh.is_some(),
+        "missing refresh_token in response: {body}"
+    );
 
     // New tokens must differ from old ones
     assert_ne!(
@@ -102,7 +108,10 @@ async fn token_refresh_old_token_rejected_after_rotation() {
     )
     .await;
     let (status, body, raw) = read_json(res).await;
-    assert_eq!(status, 401, "reused refresh token should be rejected: {raw}");
+    assert_eq!(
+        status, 401,
+        "reused refresh token should be rejected: {raw}"
+    );
     assert_error_envelope(&body, "INVALID_TOKEN");
 }
 

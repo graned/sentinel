@@ -57,9 +57,10 @@ impl OidcAuthCodeService {
     ) -> Result<String, ServiceError> {
         // Generate 32 random bytes → URL-safe base64 (no padding) → raw code
         let mut raw_bytes = [0u8; 32];
-        { rand::rngs::OsRng.fill_bytes(&mut raw_bytes); }
-        let raw_code =
-            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(raw_bytes);
+        {
+            rand::rngs::OsRng.fill_bytes(&mut raw_bytes);
+        }
+        let raw_code = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(raw_bytes);
 
         // Store SHA256(raw_code) as hex
         let code_hash = format!("{:x}", Sha256::digest(raw_code.as_bytes()));
@@ -113,9 +114,9 @@ impl OidcAuthCodeService {
             .consume_code(conn, &code_hash)
             .await
             .map_err(|e| match e {
-                RepositoryError::NotFound => {
-                    ServiceError::OidcInvalidCode("Authorization code is invalid, expired, or already consumed".to_string())
-                }
+                RepositoryError::NotFound => ServiceError::OidcInvalidCode(
+                    "Authorization code is invalid, expired, or already consumed".to_string(),
+                ),
                 other => ServiceError::DatabaseError(other.to_string()),
             })?;
 
@@ -146,8 +147,7 @@ impl OidcAuthCodeService {
     /// Verify the PKCE S256 challenge: `BASE64URL_NOPAD(SHA256(verifier)) == challenge`.
     fn verify_pkce(&self, code_verifier: &str, code_challenge: &str) -> bool {
         let hash = Sha256::digest(code_verifier.as_bytes());
-        let computed =
-            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(hash.as_slice());
+        let computed = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(hash.as_slice());
         computed == code_challenge
     }
 }

@@ -46,8 +46,8 @@ impl OidcAuthCodeRepository {
         code_hash: &str,
     ) -> Result<OidcAuthCode, crate::RepositoryError> {
         use crate::schema::oidc_auth_codes::dsl::{
-            code_hash as col_code_hash, consumed_at as col_consumed_at, expires_at as col_expires_at,
-            oidc_auth_codes,
+            code_hash as col_code_hash, consumed_at as col_consumed_at,
+            expires_at as col_expires_at, oidc_auth_codes,
         };
         use diesel::prelude::*;
         use diesel_async::RunQueryDsl;

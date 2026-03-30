@@ -128,9 +128,7 @@ impl OidcKeyService {
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?
             .ok_or_else(|| {
-                ServiceError::OidcNoActiveSigningKey(
-                    "No active OIDC signing key found".to_string(),
-                )
+                ServiceError::OidcNoActiveSigningKey("No active OIDC signing key found".to_string())
             })
     }
 
@@ -160,7 +158,8 @@ impl OidcKeyService {
         &self,
         conn: &mut DbConnection<'_>,
     ) -> Result<serde_json::Value, ServiceError> {
-        let active_key = self.key_repository
+        let active_key = self
+            .key_repository
             .find_active(conn)
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;

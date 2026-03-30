@@ -107,8 +107,7 @@ impl SessionRepository {
             .filter(sessions::revoked_at.is_null())
             .filter(sessions::refresh_token_expires_at.gt(chrono::Utc::now()))
             .inner_join(
-                user_identities::table
-                    .on(user_identities::identity_id.eq(sessions::identity_id)),
+                user_identities::table.on(user_identities::identity_id.eq(sessions::identity_id)),
             )
             .select((Sessions::as_select(), user_identities::email))
             .order(sessions::created_at.desc())

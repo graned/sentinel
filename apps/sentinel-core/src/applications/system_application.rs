@@ -82,10 +82,7 @@ impl SystemApplication {
             .config_service
             .has_active_email_provider(&mut conn)
             .await?;
-        let clients = self
-            .oidc_client_service
-            .list_all_clients(&mut conn)
-            .await?;
+        let clients = self.oidc_client_service.list_all_clients(&mut conn).await?;
         let oidc_enabled = !clients.is_empty();
         let oidc_clients = clients
             .into_iter()
@@ -178,7 +175,13 @@ impl SystemApplication {
         let mut conn = self.pg_client.get_conn().await?;
         let updated = self
             .config_service
-            .update_config(&mut conn, config_id, &req.config, req.is_active, Some(ctx.user_id))
+            .update_config(
+                &mut conn,
+                config_id,
+                &req.config,
+                req.is_active,
+                Some(ctx.user_id),
+            )
             .await?;
         Ok(Self::config_to_response(updated))
     }
@@ -194,8 +197,12 @@ impl SystemApplication {
         self.config_service
             .find_config(&mut conn, config_id)
             .await?
-            .ok_or_else(|| ServiceError::NotFoundError("Provider configuration not found".into()))?;
-        self.config_service.delete_config(&mut conn, config_id).await
+            .ok_or_else(|| {
+                ServiceError::NotFoundError("Provider configuration not found".into())
+            })?;
+        self.config_service
+            .delete_config(&mut conn, config_id)
+            .await
     }
 
     pub async fn test_config(
@@ -209,8 +216,12 @@ impl SystemApplication {
             .config_service
             .find_config(&mut conn, config_id)
             .await?
-            .ok_or_else(|| ServiceError::NotFoundError("Provider configuration not found".into()))?;
-        let decrypted = self.config_service.decrypt_config(&config.config_encrypted)?;
+            .ok_or_else(|| {
+                ServiceError::NotFoundError("Provider configuration not found".into())
+            })?;
+        let decrypted = self
+            .config_service
+            .decrypt_config(&config.config_encrypted)?;
         match self.email_service.test_connection(&decrypted).await {
             Ok(()) => Ok(TestProviderConfigResponse {
                 success: true,
@@ -236,9 +247,17 @@ impl SystemApplication {
             .config_service
             .find_config(&mut conn, config_id)
             .await?
-            .ok_or_else(|| ServiceError::NotFoundError("Provider configuration not found".into()))?;
-        let decrypted = self.config_service.decrypt_config(&config.config_encrypted)?;
-        match self.email_service.send_test_email(&decrypted, to_email).await {
+            .ok_or_else(|| {
+                ServiceError::NotFoundError("Provider configuration not found".into())
+            })?;
+        let decrypted = self
+            .config_service
+            .decrypt_config(&config.config_encrypted)?;
+        match self
+            .email_service
+            .send_test_email(&decrypted, to_email)
+            .await
+        {
             Ok(()) => Ok(TestProviderConfigResponse {
                 success: true,
                 message: "Test email sent".to_string(),
@@ -262,7 +281,9 @@ impl SystemApplication {
             .config_service
             .find_config(&mut conn, config_id)
             .await?
-            .ok_or_else(|| ServiceError::NotFoundError("Provider configuration not found".into()))?;
+            .ok_or_else(|| {
+                ServiceError::NotFoundError("Provider configuration not found".into())
+            })?;
         let decrypted = self
             .config_service
             .decrypt_config(&config.config_encrypted)?;

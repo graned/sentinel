@@ -10,7 +10,11 @@
 //! | GET | `/oauth/authorize` | Sentinel Bearer token (user must be logged in) |
 //! | POST | `/oauth/token` | Client credentials / PKCE |
 
-use axum::{middleware, routing::{get, post}, Router};
+use axum::{
+    middleware,
+    routing::{get, post},
+    Router,
+};
 
 use crate::http::api::{
     handlers::oidc_handlers::{authorize, jwks, openid_configuration, token_exchange},

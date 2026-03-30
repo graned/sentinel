@@ -44,7 +44,10 @@ impl AdminSessionApplication {
     ) -> Result<Vec<AdminSessionResponse>, ServiceError> {
         Self::require_admin(&ctx)?;
         let mut conn = self.pg_client.get_conn().await?;
-        let rows = self.session_service.get_all_active_sessions(&mut conn).await?;
+        let rows = self
+            .session_service
+            .get_all_active_sessions(&mut conn)
+            .await?;
         Ok(rows
             .into_iter()
             .map(|(s, email)| AdminSessionResponse {

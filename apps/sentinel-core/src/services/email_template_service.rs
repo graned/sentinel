@@ -17,7 +17,9 @@
 //! [`EmailTemplateService::create_template`] deactivates any existing active
 //! template of the same type *before* inserting the new one to uphold this constraint.
 
-use crate::{DbConnection, EmailTemplate, EmailTemplateRepository, EmailTemplateType, ServiceError};
+use crate::{
+    DbConnection, EmailTemplate, EmailTemplateRepository, EmailTemplateType, ServiceError,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -107,7 +109,11 @@ impl EmailTemplateService {
                 is_active: bool,
             }
             self.repo
-                .update(conn, tmpl.template_id, DeactivateChangeset { is_active: false })
+                .update(
+                    conn,
+                    tmpl.template_id,
+                    DeactivateChangeset { is_active: false },
+                )
                 .await
                 .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
         }

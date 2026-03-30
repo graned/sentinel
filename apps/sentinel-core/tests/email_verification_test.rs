@@ -24,7 +24,9 @@ async fn verify_email_with_invalid_token_returns_401() {
     let client = Client::new();
 
     let res = client
-        .get(get_verify_email_url("ev_badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbad"))
+        .get(get_verify_email_url(
+            "ev_badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbad",
+        ))
         .send()
         .await
         .expect("request failed");

@@ -13,7 +13,9 @@ async fn security_headers_are_present_on_health_endpoint() {
     let headers = res.headers();
 
     assert_eq!(
-        headers.get("x-content-type-options").map(|v| v.to_str().unwrap()),
+        headers
+            .get("x-content-type-options")
+            .map(|v| v.to_str().unwrap()),
         Some("nosniff"),
         "x-content-type-options header missing or wrong"
     );

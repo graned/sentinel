@@ -43,8 +43,7 @@ fn validate_rules(rules: &Vec<PolicyRule>) -> Result<(), ValidationError> {
 
         if !rule.path.starts_with('/') {
             let mut e = ValidationError::new("invalid_rule");
-            e.message =
-                Some(format!("rule[{}]: path must start with '/'", i).into());
+            e.message = Some(format!("rule[{}]: path must start with '/'", i).into());
             return Err(e);
         }
 

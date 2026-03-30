@@ -24,17 +24,9 @@
 //! nested inside `/v1/api/user` and the nested router strips the prefix from
 //! `req.uri()`. Policy rules must reference the *full* path.
 
-use crate::{
-    api::dtos::AuthenticatedUserContext,
-    server::AppState,
-    ApiError, ServiceError,
-};
+use crate::{api::dtos::AuthenticatedUserContext, server::AppState, ApiError, ServiceError};
 use axum::{
-    body::Body,
-    extract::OriginalUri,
-    http::Request,
-    middleware::Next,
-    response::Response,
+    body::Body, extract::OriginalUri, http::Request, middleware::Next, response::Response,
     Extension,
 };
 use std::sync::Arc;

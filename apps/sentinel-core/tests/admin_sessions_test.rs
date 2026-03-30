@@ -212,12 +212,24 @@ async fn list_admin_sessions_as_admin_returns_session_list() {
     let sessions = body["data"]
         .as_array()
         .unwrap_or_else(|| panic!("data must be array: {body}"));
-    assert!(!sessions.is_empty(), "expected at least the admin's own session: {body}");
+    assert!(
+        !sessions.is_empty(),
+        "expected at least the admin's own session: {body}"
+    );
 
     let first = &sessions[0];
-    assert!(first["session_id"].is_string(), "missing session_id: {body}");
-    assert!(first["user_email"].is_string(), "missing user_email: {body}");
-    assert!(first["expires_at"].is_string(), "missing expires_at: {body}");
+    assert!(
+        first["session_id"].is_string(),
+        "missing session_id: {body}"
+    );
+    assert!(
+        first["user_email"].is_string(),
+        "missing user_email: {body}"
+    );
+    assert!(
+        first["expires_at"].is_string(),
+        "missing expires_at: {body}"
+    );
 }
 
 /// As admin: DELETE /v1/api/admin/sessions/{id} revokes a known session.
@@ -272,7 +284,10 @@ async fn revoke_admin_session_as_admin_succeeds() {
     let sessions = sessions_body["data"]
         .as_array()
         .unwrap_or_else(|| panic!("data must be array: {sessions_body}"));
-    assert!(!sessions.is_empty(), "expected at least one session: {sessions_body}");
+    assert!(
+        !sessions.is_empty(),
+        "expected at least one session: {sessions_body}"
+    );
 
     let session_id_str = sessions[0]["session_id"]
         .as_str()
@@ -387,7 +402,10 @@ async fn bulk_revoke_admin_sessions_as_admin_returns_revoked_count() {
     let sessions = sessions_body["data"]
         .as_array()
         .unwrap_or_else(|| panic!("data must be array: {sessions_body}"));
-    assert!(sessions.len() >= 2, "expected at least 2 sessions: {sessions_body}");
+    assert!(
+        sessions.len() >= 2,
+        "expected at least 2 sessions: {sessions_body}"
+    );
 
     let ids: Vec<serde_json::Value> = sessions
         .iter()

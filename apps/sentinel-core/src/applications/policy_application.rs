@@ -18,9 +18,8 @@
 use crate::{
     http::api::dtos::{
         AuthenticatedUserContext, BatchCheckRequest, BatchCheckResponse, BatchCheckResult,
-        CreatePolicyRequest, CreatePolicyResponse, GetPolicyRulesResponse, PolicyRule,
-        ProbeResult, RunProbeRequest, RunProbeResponse, UpdatePolicyRulesRequest,
-        UpdatePolicyRulesResponse,
+        CreatePolicyRequest, CreatePolicyResponse, GetPolicyRulesResponse, PolicyRule, ProbeResult,
+        RunProbeRequest, RunProbeResponse, UpdatePolicyRulesRequest, UpdatePolicyRulesResponse,
     },
     Policy, PolicyService, PostgresClient, ServiceError, SessionService,
 };
@@ -88,7 +87,9 @@ impl PolicyApplication {
         ctx: &AuthenticatedUserContext,
     ) -> Result<Vec<Policy>, ServiceError> {
         if !ctx.roles.iter().any(|r| r == "admin") {
-            return Err(ServiceError::AuthorizationError("Admin role required".to_string()));
+            return Err(ServiceError::AuthorizationError(
+                "Admin role required".to_string(),
+            ));
         }
         let mut conn = self.pg_client.get_conn().await?;
         self.policy_service.list_policies(&mut conn).await
@@ -101,14 +102,18 @@ impl PolicyApplication {
         policy_id: Uuid,
     ) -> Result<(), ServiceError> {
         if !ctx.roles.iter().any(|r| r == "admin") {
-            return Err(ServiceError::AuthorizationError("Admin role required".to_string()));
+            return Err(ServiceError::AuthorizationError(
+                "Admin role required".to_string(),
+            ));
         }
         let mut conn = self.pg_client.get_conn().await?;
         self.policy_service
             .get_policy(&mut conn, policy_id)
             .await?
             .ok_or_else(|| ServiceError::NotFoundError("Policy not found".to_string()))?;
-        self.policy_service.deactivate_policy(&mut conn, policy_id).await?;
+        self.policy_service
+            .deactivate_policy(&mut conn, policy_id)
+            .await?;
         // Remove only this policy's cache entry.
         self.engine.write().await.remove(&policy_id);
         tracing::info!(policy_id = %policy_id, "Policy deactivated — engine cache entry removed");
@@ -122,7 +127,9 @@ impl PolicyApplication {
         policy_id: Uuid,
     ) -> Result<GetPolicyRulesResponse, ServiceError> {
         if !ctx.roles.iter().any(|r| r == "admin") {
-            return Err(ServiceError::AuthorizationError("Admin role required".to_string()));
+            return Err(ServiceError::AuthorizationError(
+                "Admin role required".to_string(),
+            ));
         }
         let mut conn = self.pg_client.get_conn().await?;
 
@@ -130,7 +137,9 @@ impl PolicyApplication {
             .policy_service
             .get_policy(&mut conn, policy_id)
             .await?
-            .ok_or_else(|| ServiceError::NotFoundError(format!("Policy {} not found", policy_id)))?;
+            .ok_or_else(|| {
+                ServiceError::NotFoundError(format!("Policy {} not found", policy_id))
+            })?;
 
         let version = self
             .policy_service
@@ -226,7 +235,8 @@ impl PolicyApplication {
             .await?;
 
         // Hot-reload the cache from the freshly compiled bytes
-        self.swap_engine(policy_id, next_version, &compiled_bytes).await?;
+        self.swap_engine(policy_id, next_version, &compiled_bytes)
+            .await?;
 
         tracing::info!(
             policy_id = %policy_id,
@@ -268,7 +278,10 @@ impl PolicyApplication {
                     roles = ?roles,
                     "Policy cache hit (fast path)"
                 );
-                return Ok((cached.engine.is_allowed(method, path, roles), cached.version));
+                return Ok((
+                    cached.engine.is_allowed(method, path, roles),
+                    cached.version,
+                ));
             }
         } // read lock dropped
 
@@ -313,7 +326,10 @@ impl PolicyApplication {
                 .get(&resolved_id)
                 .ok_or_else(|| ServiceError::InternalError("Engine failed to load".to_string()))?;
 
-            return Ok((cached.engine.is_allowed(method, path, roles), active_version));
+            return Ok((
+                cached.engine.is_allowed(method, path, roles),
+                active_version,
+            ));
         }
 
         // No specific policy_id — evaluate all active policies; allow if any permits.
@@ -385,11 +401,15 @@ impl PolicyApplication {
 
         // Compile outside the transaction — pure CPU work, no DB needed
         let bundle = PolicyBundle {
-            rules: request.rules.iter().map(|r| Rule {
-                method: r.method.clone(),
-                path: r.path.clone(),
-                roles: r.roles.clone(),
-            }).collect(),
+            rules: request
+                .rules
+                .iter()
+                .map(|r| Rule {
+                    method: r.method.clone(),
+                    path: r.path.clone(),
+                    roles: r.roles.clone(),
+                })
+                .collect(),
         };
 
         let compiled_bytes = compile(&bundle)
@@ -443,7 +463,9 @@ impl PolicyApplication {
                         .await?;
 
                     // Activate version 1 — flips policy_versions.is_active
-                    policy_service.activate_version(trx, policy.policy_id, 1).await?;
+                    policy_service
+                        .activate_version(trx, policy.policy_id, 1)
+                        .await?;
 
                     tracing::info!(
                         policy_id = %policy.policy_id,
@@ -510,11 +532,15 @@ impl PolicyApplication {
 
         // Compile outside the transaction
         let bundle = PolicyBundle {
-            rules: request.rules.iter().map(|r| Rule {
-                method: r.method.clone(),
-                path: r.path.clone(),
-                roles: r.roles.clone(),
-            }).collect(),
+            rules: request
+                .rules
+                .iter()
+                .map(|r| Rule {
+                    method: r.method.clone(),
+                    path: r.path.clone(),
+                    roles: r.roles.clone(),
+                })
+                .collect(),
         };
 
         let compiled_bytes = compile(&bundle)
@@ -573,7 +599,10 @@ impl PolicyApplication {
             .await?;
 
         // Hot-reload cache outside the transaction
-        if let Err(e) = self.swap_engine(policy_id, next_version, &compiled_bytes).await {
+        if let Err(e) = self
+            .swap_engine(policy_id, next_version, &compiled_bytes)
+            .await
+        {
             tracing::warn!(
                 "Policy {} version {} activated in DB but cache reload failed: {}",
                 policy_id,
@@ -598,7 +627,12 @@ impl PolicyApplication {
 
         for check in &request.checks {
             let (allowed, version) = self
-                .is_allowed(request.policy_id, &check.method, &check.path, &request.roles)
+                .is_allowed(
+                    request.policy_id,
+                    &check.method,
+                    &check.path,
+                    &request.roles,
+                )
                 .await?;
             evaluated_version = version;
             results.push(BatchCheckResult {
@@ -626,7 +660,9 @@ impl PolicyApplication {
         request: RunProbeRequest,
     ) -> Result<RunProbeResponse, ServiceError> {
         if !ctx.roles.iter().any(|r| r == "admin") {
-            return Err(ServiceError::AuthorizationError("Admin role required".to_string()));
+            return Err(ServiceError::AuthorizationError(
+                "Admin role required".to_string(),
+            ));
         }
 
         // Fetch the active rules — these define the test cases
@@ -634,16 +670,18 @@ impl PolicyApplication {
         let version = rules_response.version;
 
         // Issue a short-lived internal test token (never returned to the caller)
-        let test_token = self
-            .session_service
-            .generate_test_token(&request.roles, policy_id, version)?;
+        let test_token =
+            self.session_service
+                .generate_test_token(&request.roles, policy_id, version)?;
 
         let base_url = request.base_url.trim_end_matches('/').to_string();
 
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(10))
             .build()
-            .map_err(|e| ServiceError::InternalError(format!("Failed to build HTTP client: {e}")))?;
+            .map_err(|e| {
+                ServiceError::InternalError(format!("Failed to build HTTP client: {e}"))
+            })?;
 
         // Fan-out all rule probes concurrently
         let probe_futures: Vec<_> = rules_response
@@ -660,7 +698,12 @@ impl PolicyApplication {
                     let method = reqwest::Method::from_bytes(method_str.to_uppercase().as_bytes())
                         .unwrap_or(reqwest::Method::GET);
 
-                    match client.request(method, &url).bearer_auth(&token).send().await {
+                    match client
+                        .request(method, &url)
+                        .bearer_auth(&token)
+                        .send()
+                        .await
+                    {
                         Ok(resp) => {
                             let status = resp.status().as_u16();
                             ProbeResult {

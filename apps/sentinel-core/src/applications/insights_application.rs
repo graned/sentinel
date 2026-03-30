@@ -19,10 +19,8 @@
 
 use crate::{
     domain::repositories::{
-        identities_repository::IdentitiesRepository,
-        session_repository::SessionRepository,
-        user_mfa_totp_repository::UserMfaTotpRepository,
-        user_repository::UserRepository,
+        identities_repository::IdentitiesRepository, session_repository::SessionRepository,
+        user_mfa_totp_repository::UserMfaTotpRepository, user_repository::UserRepository,
     },
     http::api::dtos::{
         AuthenticatedUserContext, InsightsSummaryResponse, SessionActivityPoint, UserGrowthPoint,

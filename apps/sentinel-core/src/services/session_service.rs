@@ -417,10 +417,9 @@ impl SessionService {
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
 
-        let session = sessions
-            .into_iter()
-            .next()
-            .ok_or_else(|| ServiceError::InvalidTokenError("Refresh token not found".to_string()))?;
+        let session = sessions.into_iter().next().ok_or_else(|| {
+            ServiceError::InvalidTokenError("Refresh token not found".to_string())
+        })?;
 
         if session.revoked_at.is_some() {
             return Err(ServiceError::InvalidTokenError(
@@ -480,8 +479,7 @@ impl SessionService {
         let uid = parsed["uid"]
             .as_str()
             .ok_or_else(|| ServiceError::InvalidTokenError("Missing uid".to_string()))?;
-        Uuid::parse_str(uid)
-            .map_err(|_| ServiceError::InvalidTokenError("Invalid uid".to_string()))
+        Uuid::parse_str(uid).map_err(|_| ServiceError::InvalidTokenError("Invalid uid".to_string()))
     }
 
     /// Issue a short-lived (5-min) PASETO policy test token.

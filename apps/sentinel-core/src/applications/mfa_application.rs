@@ -25,7 +25,9 @@
 //! `429 MFA_ATTEMPT_LIMIT_EXCEEDED`. Entries are pruned on every call.
 
 use crate::{
-    http::api::dtos::{BasicLoginResponse, ConfirmMfaEnrollmentResponse, StartMfaEnrollmentResponse},
+    http::api::dtos::{
+        BasicLoginResponse, ConfirmMfaEnrollmentResponse, StartMfaEnrollmentResponse,
+    },
     IdentityService, MfaTotpService, PostgresClient, ServiceError, SessionService, Sessions,
     UserRoleService, UserService,
 };
@@ -33,11 +35,7 @@ use chrono::Utc;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::AsyncConnection;
 use sha2::{Digest, Sha256};
-use std::{
-    collections::HashMap,
-    sync::Arc,
-    time::Instant,
-};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -184,9 +182,7 @@ impl MfaApplication {
 
                 async move {
                     // Verify TOTP code (or recovery code)
-                    mfa_totp_service
-                        .verify(&mut trx, user_id, &code)
-                        .await?;
+                    mfa_totp_service.verify(&mut trx, user_id, &code).await?;
 
                     // Fetch user
                     let user = user_service

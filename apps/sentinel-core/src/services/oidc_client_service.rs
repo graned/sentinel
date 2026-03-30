@@ -101,7 +101,9 @@ impl OidcClientService {
                 if ok {
                     Ok(())
                 } else {
-                    Err(ServiceError::OidcInvalidCode("Invalid client secret".to_string()))
+                    Err(ServiceError::OidcInvalidCode(
+                        "Invalid client secret".to_string(),
+                    ))
                 }
             }
             None => Err(ServiceError::OidcInvalidCode(

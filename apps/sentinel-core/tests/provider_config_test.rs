@@ -45,8 +45,7 @@ async fn register_fresh_user(client: &Client) -> (String, String, Uuid) {
 
 async fn mark_email_verified(email: &str) {
     dotenv().ok();
-    let db_url =
-        std::env::var("DATABASE_URL").expect("DATABASE_URL not set");
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set");
     let (client, conn) = tokio_postgres::connect(&db_url, tokio_postgres::NoTls)
         .await
         .expect("DB connection failed");
@@ -66,8 +65,7 @@ async fn mark_email_verified(email: &str) {
 
 async fn grant_admin_role(user_id: Uuid) {
     dotenv().ok();
-    let db_url =
-        std::env::var("DATABASE_URL").expect("DATABASE_URL not set");
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set");
     let (client, conn) = tokio_postgres::connect(&db_url, tokio_postgres::NoTls)
         .await
         .expect("DB connection failed");
@@ -266,7 +264,10 @@ async fn test_update_provider_config() {
     assert_eq!(body["success"], true);
 
     let data = &body["data"];
-    assert_eq!(data["configuration_id"].as_str(), Some(config_id.to_string().as_str()));
+    assert_eq!(
+        data["configuration_id"].as_str(),
+        Some(config_id.to_string().as_str())
+    );
     assert_eq!(data["is_active"].as_bool(), Some(false));
 
     // Values must still be redacted
@@ -342,7 +343,10 @@ async fn test_reveal_provider_config() {
     assert_eq!(body["success"], true);
 
     let data = &body["data"];
-    assert_eq!(data["configuration_id"].as_str(), Some(config_id.to_string().as_str()));
+    assert_eq!(
+        data["configuration_id"].as_str(),
+        Some(config_id.to_string().as_str())
+    );
 
     // Decrypted values must NOT be redacted
     let config = &data["config"];

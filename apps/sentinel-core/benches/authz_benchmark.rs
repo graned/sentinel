@@ -91,7 +91,10 @@ fn setup_authorized_session(client: &Client, base: &str) -> AuthSession {
         .iter()
         .filter_map(|v| v.as_str().map(String::from))
         .collect();
-    assert!(!roles.is_empty(), "user has no roles — policy would never match");
+    assert!(
+        !roles.is_empty(),
+        "user has no roles — policy would never match"
+    );
 
     // Create a policy that grants GET /v1/api/user/canary for every role the
     // user has. One rule per role, matching the integration test pattern.
@@ -117,10 +120,7 @@ fn setup_authorized_session(client: &Client, base: &str) -> AuthSession {
         .expect("create policy: network error")
         .json()
         .unwrap();
-    assert_eq!(
-        body["success"], true,
-        "policy creation failed: {body}"
-    );
+    assert_eq!(body["success"], true, "policy creation failed: {body}");
 
     AuthSession { token }
 }
@@ -226,8 +226,16 @@ fn bench_canary_vs_policy_size(c: &mut Criterion) {
 
         // Build rules: N filler rules for different paths + the canary allow rule
         let resources = [
-            "users", "orders", "products", "invoices", "reports",
-            "teams", "roles", "sessions", "audit-logs", "webhooks",
+            "users",
+            "orders",
+            "products",
+            "invoices",
+            "reports",
+            "teams",
+            "roles",
+            "sessions",
+            "audit-logs",
+            "webhooks",
         ];
         let methods = ["GET", "POST", "PUT", "DELETE", "PATCH"];
 

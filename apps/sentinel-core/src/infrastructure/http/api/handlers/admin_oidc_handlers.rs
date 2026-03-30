@@ -7,9 +7,7 @@
 //! | GET  | `/admin/oidc/clients` | List all registered OIDC clients |
 
 use crate::{
-    http::api::dtos::{
-        CreateOidcClientRequest, CreateOidcClientResponse, GenerateKeyResponse,
-    },
+    http::api::dtos::{CreateOidcClientRequest, CreateOidcClientResponse, GenerateKeyResponse},
     http::api::routes::api_validation::ValidatedJson,
     http::api::RawResponse,
     http::server::AppState,

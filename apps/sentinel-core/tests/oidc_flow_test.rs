@@ -4,9 +4,9 @@ use base64::Engine;
 use common::{
     helpers::{admin_login, post_json, read_json},
     setup::{
-        get_jwks_url, get_login_user_url, get_oauth_authorize_url,
-        get_oauth_token_url, get_oidc_create_client_url, get_oidc_discovery_url,
-        get_oidc_generate_key_url, get_register_user_url,
+        get_jwks_url, get_login_user_url, get_oauth_authorize_url, get_oauth_token_url,
+        get_oidc_create_client_url, get_oidc_discovery_url, get_oidc_generate_key_url,
+        get_register_user_url,
     },
 };
 use dotenvy::dotenv;
@@ -96,7 +96,10 @@ async fn oidc_full_flow() {
         .to_string();
     assert!(!kid.is_empty(), "kid should not be empty");
     assert_eq!(body["data"]["alg"], "RS256", "expected RS256 alg: {body}");
-    assert_eq!(body["data"]["status"], "active", "expected active status: {body}");
+    assert_eq!(
+        body["data"]["status"], "active",
+        "expected active status: {body}"
+    );
 
     // ── Step 2: Create an OIDC client ─────────────────────────────────────────
     let client_id = format!("test-app-{}", Uuid::new_v4());
@@ -119,8 +122,14 @@ async fn oidc_full_flow() {
     let (status, body, raw) = read_json(res).await;
     assert_eq!(status, 200, "create client failed: {raw}");
     assert_eq!(body["success"], true, "create client response: {body}");
-    assert_eq!(body["data"]["client_id"], client_id, "client_id mismatch: {body}");
-    assert!(!body["data"]["oidc_client_id"].is_null(), "missing oidc_client_id: {body}");
+    assert_eq!(
+        body["data"]["client_id"], client_id,
+        "client_id mismatch: {body}"
+    );
+    assert!(
+        !body["data"]["oidc_client_id"].is_null(),
+        "missing oidc_client_id: {body}"
+    );
 
     // ── Step 3: Register user + login ─────────────────────────────────────────
     let email = format!("oidc-test-{}@example.com", Uuid::new_v4());
@@ -248,7 +257,11 @@ async fn oidc_full_flow() {
 
     // ── Step 7: Decode id_token JWT (claims only, no signature verify) ────────
     let parts: Vec<&str> = id_token.split('.').collect();
-    assert_eq!(parts.len(), 3, "id_token should have 3 JWT parts (header.payload.signature)");
+    assert_eq!(
+        parts.len(),
+        3,
+        "id_token should have 3 JWT parts (header.payload.signature)"
+    );
 
     let claims_b64 = parts[1];
     let claims_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
@@ -288,17 +301,32 @@ async fn oidc_full_flow() {
     let keys = jwks_body["keys"]
         .as_array()
         .unwrap_or_else(|| panic!("JWKS missing 'keys' array: {raw}"));
-    assert!(!keys.is_empty(), "JWKS 'keys' array should not be empty: {raw}");
+    assert!(
+        !keys.is_empty(),
+        "JWKS 'keys' array should not be empty: {raw}"
+    );
 
     let first_key = &keys[0];
     assert!(
         first_key["kid"].as_str().is_some(),
         "JWK missing 'kid': {first_key}"
     );
-    assert_eq!(first_key["kty"], "RSA", "JWK 'kty' should be RSA: {first_key}");
-    assert_eq!(first_key["alg"], "RS256", "JWK 'alg' should be RS256: {first_key}");
-    assert!(first_key["n"].as_str().is_some(), "JWK missing modulus 'n': {first_key}");
-    assert!(first_key["e"].as_str().is_some(), "JWK missing exponent 'e': {first_key}");
+    assert_eq!(
+        first_key["kty"], "RSA",
+        "JWK 'kty' should be RSA: {first_key}"
+    );
+    assert_eq!(
+        first_key["alg"], "RS256",
+        "JWK 'alg' should be RS256: {first_key}"
+    );
+    assert!(
+        first_key["n"].as_str().is_some(),
+        "JWK missing modulus 'n': {first_key}"
+    );
+    assert!(
+        first_key["e"].as_str().is_some(),
+        "JWK missing exponent 'e': {first_key}"
+    );
 
     // ── Step 9: GET /.well-known/openid-configuration ─────────────────────────
     let res = client
@@ -326,7 +354,9 @@ async fn oidc_full_flow() {
         "discovery missing 'jwks_uri': {raw}"
     );
     assert!(
-        discovery_body["response_types_supported"].as_array().is_some(),
+        discovery_body["response_types_supported"]
+            .as_array()
+            .is_some(),
         "discovery missing 'response_types_supported': {raw}"
     );
     assert!(

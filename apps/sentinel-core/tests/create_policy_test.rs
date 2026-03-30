@@ -50,7 +50,10 @@ async fn create_policy_with_valid_rules_returns_created_policy() {
 
     assert_eq!(status, 200, "expected 200, got {status}\n{raw}");
     assert_eq!(body["success"], true, "{body}");
-    assert!(body["error"].is_null(), "error must be null on success: {body}");
+    assert!(
+        body["error"].is_null(),
+        "error must be null on success: {body}"
+    );
 
     let data = &body["data"];
     assert!(data.is_object(), "data must be an object: {body}");
@@ -60,7 +63,10 @@ async fn create_policy_with_valid_rules_returns_created_policy() {
     assert_eq!(data["environment"].as_str(), Some("prod"), "{body}");
     assert_eq!(data["description"].as_str(), Some("Test policy"), "{body}");
     assert_eq!(data["active_version"].as_i64(), Some(1), "{body}");
-    assert!(data["created_at"].is_string(), "created_at must be a string: {body}");
+    assert!(
+        data["created_at"].is_string(),
+        "created_at must be a string: {body}"
+    );
 }
 
 #[tokio::test]
@@ -87,7 +93,10 @@ async fn create_policy_without_optional_fields_returns_created_policy() {
     assert_eq!(body["success"], true, "{body}");
 
     let data = &body["data"];
-    assert!(data["description"].is_null(), "description should be null when omitted: {body}");
+    assert!(
+        data["description"].is_null(),
+        "description should be null when omitted: {body}"
+    );
     assert_eq!(data["active_version"].as_i64(), Some(1), "{body}");
 }
 

@@ -8,11 +8,10 @@
 
 use crate::{
     http::api::routes::build_router, http::server::AppState, AdminApplication,
-    AdminSessionApplication, ApiTokenApplication,
-    ApiTokenRepository, ApiTokenService, AuthApplication, EmailService, EmailTemplateApplication,
-    EmailTemplateRepository, EmailTemplateService, EmailVerificationRepository,
-    EmailVerificationService, IdentitiesRepository, IdentityService, InsightsApplication,
-    MfaApplication, MfaTotpService,
+    AdminSessionApplication, ApiTokenApplication, ApiTokenRepository, ApiTokenService,
+    AuthApplication, EmailService, EmailTemplateApplication, EmailTemplateRepository,
+    EmailTemplateService, EmailVerificationRepository, EmailVerificationService,
+    IdentitiesRepository, IdentityService, InsightsApplication, MfaApplication, MfaTotpService,
     OidcApplication, OidcAuthCodeRepository, OidcAuthCodeService, OidcClientRepository,
     OidcClientService, OidcKeyService, OidcSigningKeyRepository, OidcTokenService,
     PasswordResetService, PasswordResetTokenRepository, PolicyApplication, PolicyRepository,
@@ -106,7 +105,8 @@ pub async fn build_app(
     let api_token_service = Arc::new(ApiTokenService::new(api_token_repo));
 
     let email_verification_repo = Arc::new(EmailVerificationRepository::new());
-    let email_verification_service = Arc::new(EmailVerificationService::new(email_verification_repo));
+    let email_verification_service =
+        Arc::new(EmailVerificationService::new(email_verification_repo));
 
     let email_template_repo = Arc::new(EmailTemplateRepository::new());
     let email_template_service = Arc::new(EmailTemplateService::new(email_template_repo));
@@ -139,7 +139,11 @@ pub async fn build_app(
         oidc_client_service.clone(),
         email_service.clone(),
     ));
-    let policy_application = Arc::new(PolicyApplication::new(pg_client.clone(), policy_service, session_service.clone()));
+    let policy_application = Arc::new(PolicyApplication::new(
+        pg_client.clone(),
+        policy_service,
+        session_service.clone(),
+    ));
 
     let oidc_application = Arc::new(OidcApplication::new(
         pg_client.clone(),

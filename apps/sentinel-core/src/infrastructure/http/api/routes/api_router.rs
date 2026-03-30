@@ -97,9 +97,7 @@ pub fn build_router(app_state: std::sync::Arc<AppState>) -> Router {
         .collect();
 
     if allowed_origins.is_empty() {
-        tracing::warn!(
-            "CORS_ALLOWED_ORIGINS not set — no cross-origin requests will be allowed"
-        );
+        tracing::warn!("CORS_ALLOWED_ORIGINS not set — no cross-origin requests will be allowed");
     }
 
     let cors = CorsLayer::new()
@@ -199,14 +197,20 @@ fn build_auth_routes() -> Router {
     let strict_limited = Router::new()
         .route("/login", post(basic_auth_login))
         .route("/mfa/verify", post(mfa_verify))
-        .layer(middleware::from_fn_with_state(strict_limiter(), rate_limit_middleware));
+        .layer(middleware::from_fn_with_state(
+            strict_limiter(),
+            rate_limit_middleware,
+        ));
 
     // Moderate rate limit (10 req / 15 min): registration, password reset, resend verification
     let moderate_limited = Router::new()
         .route("/register", post(register_user))
         .route("/password/forgot", post(forgot_password))
         .route("/resend-verification", post(resend_verification))
-        .layer(middleware::from_fn_with_state(moderate_limiter(), rate_limit_middleware));
+        .layer(middleware::from_fn_with_state(
+            moderate_limiter(),
+            rate_limit_middleware,
+        ));
 
     Router::new()
         // Rate-limited sensitive routes
@@ -260,14 +264,23 @@ fn build_admin_routes() -> Router {
         .route("/users/{user_id}/invite-link", get(get_user_invite_link))
         // User Role Management
         .route("/users/{user_id}/roles", post(assign_role_to_user))
-        .route("/users/{user_id}/roles/{role_name}", delete(remove_role_from_user))
-        .route("/users/{user_id}/permissions", get(get_user_permissions_admin))
+        .route(
+            "/users/{user_id}/roles/{role_name}",
+            delete(remove_role_from_user),
+        )
+        .route(
+            "/users/{user_id}/permissions",
+            get(get_user_permissions_admin),
+        )
         .route("/users/{user_id}/auth-info", get(get_user_auth_info))
         .route("/users/{user_id}/mfa", put(set_user_mfa_required))
         // Policy Management
         .route("/policies", get(list_policies).post(create_policy))
         .route("/policies/{policy_id}", delete(delete_policy))
-        .route("/policies/{policy_id}/rules", get(get_policy_rules).put(update_policy_rules))
+        .route(
+            "/policies/{policy_id}/rules",
+            get(get_policy_rules).put(update_policy_rules),
+        )
         .route("/policies/{policy_id}/probe", post(run_policy_probe))
         // OIDC Management
         .route("/oidc/clients", post(create_oidc_client))
@@ -301,10 +314,7 @@ fn build_system_routes() -> Router {
             "/config/email/{config_id}/reveal",
             get(get_provider_config_decrypted),
         )
-        .route(
-            "/config/email/{config_id}/test",
-            post(test_provider_config),
-        )
+        .route("/config/email/{config_id}/test", post(test_provider_config))
         .route(
             "/config/email/{config_id}/send-test",
             post(send_test_provider_email),

@@ -69,10 +69,7 @@ impl ApiTokenApplication {
         };
 
         let mut conn = self.pg_client.get_conn().await?;
-        let created = self
-            .api_token_service
-            .create(&mut conn, &new_token)
-            .await?;
+        let created = self.api_token_service.create(&mut conn, &new_token).await?;
 
         Ok(CreateApiTokenResponse {
             api_token_id: created.api_token_id,

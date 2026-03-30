@@ -249,7 +249,10 @@ async fn canary_deny_then_allow_after_policy_update() {
     assert_eq!(status, 200, "expected 200 after granting access: {raw}");
     assert_eq!(body["success"], true, "{body}");
     let msg = body["data"].as_str().unwrap_or_default();
-    assert!(!msg.is_empty(), "expected a funny message, got nothing: {body}");
+    assert!(
+        !msg.is_empty(),
+        "expected a funny message, got nothing: {body}"
+    );
     assert!(
         msg.contains(&session.roles[0]),
         "message should mention the user's role: {msg}"

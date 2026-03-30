@@ -19,15 +19,9 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use governor::{
-    clock::DefaultClock, state::keyed::DefaultKeyedStateStore, Quota, RateLimiter,
-};
+use governor::{clock::DefaultClock, state::keyed::DefaultKeyedStateStore, Quota, RateLimiter};
 use serde_json::json;
-use std::{
-    net::IpAddr,
-    num::NonZeroU32,
-    sync::Arc,
-};
+use std::{net::IpAddr, num::NonZeroU32, sync::Arc};
 
 pub type KeyedLimiter = RateLimiter<IpAddr, DefaultKeyedStateStore<IpAddr>, DefaultClock>;
 

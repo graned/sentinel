@@ -197,7 +197,10 @@ async fn admin_created_user_login_returns_must_change_password() {
         .pointer("/data/must_change_password")
         .and_then(|v| v.as_bool())
         .unwrap_or_else(|| panic!("missing must_change_password in response: {body}"));
-    assert!(must_change, "must_change_password should be true for admin-created user");
+    assert!(
+        must_change,
+        "must_change_password should be true for admin-created user"
+    );
 }
 
 /// Token with mcp=true is blocked on /user/me with MUST_CHANGE_PASSWORD.
@@ -231,7 +234,10 @@ async fn mcp_token_is_blocked_on_protected_route() {
         .await
         .expect("request failed");
     let (status, body, _) = read_json(res).await;
-    assert_eq!(status, 403, "expected 403 MUST_CHANGE_PASSWORD, body: {body}");
+    assert_eq!(
+        status, 403,
+        "expected 403 MUST_CHANGE_PASSWORD, body: {body}"
+    );
     assert_error_envelope(&body, "MUST_CHANGE_PASSWORD");
 }
 
@@ -287,7 +293,10 @@ async fn get_invite_link_for_verified_user_returns_400() {
         .expect("request failed");
 
     let (status, body, _) = read_json(res).await;
-    assert_eq!(status, 400, "expected 400 for already-verified, got: {body}");
+    assert_eq!(
+        status, 400,
+        "expected 400 for already-verified, got: {body}"
+    );
     assert_error_envelope(&body, "VALIDATION_ERROR");
 }
 

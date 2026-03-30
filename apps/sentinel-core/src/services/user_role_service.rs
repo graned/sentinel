@@ -143,10 +143,7 @@ impl UserRoleService {
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))
     }
 
-    pub async fn list_roles(
-        &self,
-        conn: &mut DbConnection<'_>,
-    ) -> Result<Vec<Role>, ServiceError> {
+    pub async fn list_roles(&self, conn: &mut DbConnection<'_>) -> Result<Vec<Role>, ServiceError> {
         self.role_repository
             .list_all(conn)
             .await
@@ -209,15 +206,17 @@ impl UserRoleService {
             .find_where(conn, role_name_col.eq(role_name))
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
-        let role = roles_found
-            .into_iter()
-            .next()
-            .ok_or_else(|| ServiceError::NotFoundError(format!("Role '{}' not found", role_name)))?;
+        let role = roles_found.into_iter().next().ok_or_else(|| {
+            ServiceError::NotFoundError(format!("Role '{}' not found", role_name))
+        })?;
 
         // Find the user_role entry
         let user_roles_found = self
             .user_role_repository
-            .find_where(conn, user_id.eq(uid).and(user_role_role_id.eq(role.role_id)))
+            .find_where(
+                conn,
+                user_id.eq(uid).and(user_role_role_id.eq(role.role_id)),
+            )
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
         let ur = user_roles_found

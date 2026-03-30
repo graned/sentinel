@@ -16,7 +16,12 @@ fn unique_test_ip() -> String {
 }
 
 /// POST JSON with a spoofed X-Forwarded-For header so the rate limiter uses a unique IP.
-async fn post_with_ip(client: &Client, url: &str, body: serde_json::Value, ip: &str) -> reqwest::Response {
+async fn post_with_ip(
+    client: &Client,
+    url: &str,
+    body: serde_json::Value,
+    ip: &str,
+) -> reqwest::Response {
     client
         .post(url)
         .header("X-Forwarded-For", ip)
@@ -108,5 +113,8 @@ async fn forgot_password_rate_limit_returns_429_after_10_requests() {
     )
     .await;
     let status = res.status().as_u16();
-    assert_eq!(status, 429, "11th forgot_password attempt should be rate-limited");
+    assert_eq!(
+        status, 429,
+        "11th forgot_password attempt should be rate-limited"
+    );
 }

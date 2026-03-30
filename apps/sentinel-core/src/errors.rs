@@ -161,7 +161,6 @@ pub enum ServiceError {
     InternalError(String),
 
     // ── OIDC errors ──────────────────────────────────────────────────────────
-
     /// The `client_id` in an OIDC request was not found (maps to 400).
     OidcClientNotFound(String),
     /// The `redirect_uri` does not match any registered URI for the client.
@@ -182,7 +181,6 @@ pub enum ServiceError {
     OidcSigningError(String),
 
     // ── MFA errors ───────────────────────────────────────────────────────────
-
     /// The submitted TOTP code or recovery code was incorrect (maps to 401).
     MfaInvalidCode(String),
     /// The user attempted to verify MFA but has not enrolled TOTP (maps to 400).
@@ -191,17 +189,14 @@ pub enum ServiceError {
     MfaAttemptLimitExceeded(String),
 
     // ── API token errors ──────────────────────────────────────────────────────
-
     /// The `sat_*` API token was not found or was revoked (maps to 404).
     ApiTokenNotFound(String),
 
     // ── Email verification errors ─────────────────────────────────────────────
-
     /// The user's email is not yet verified; they must confirm it first (maps to 403).
     EmailNotVerified(String),
 
     // ── Forced password change ────────────────────────────────────────────────
-
     /// An admin-created account with a temporary password must change it first (maps to 403).
     MustChangePassword(String),
 }
