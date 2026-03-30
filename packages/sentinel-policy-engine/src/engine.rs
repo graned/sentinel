@@ -19,7 +19,10 @@ impl PolicyEngine {
     /// This is a single `bincode::deserialize` call — no JSON parsing,
     /// no path compilation.  The resulting engine is ready to evaluate requests.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, CompileError> {
-        tracing::debug!(bytes = bytes.len(), "Deserializing PolicyEngine from compiled bytes");
+        tracing::debug!(
+            bytes = bytes.len(),
+            "Deserializing PolicyEngine from compiled bytes"
+        );
         let root = bincode::deserialize(bytes)?;
         tracing::debug!("PolicyEngine deserialized successfully");
         Ok(Self { root })
@@ -67,13 +70,7 @@ impl PolicyEngine {
         result
     }
 
-    fn evaluate(
-        &self,
-        node: &TrieNode,
-        segments: &[&str],
-        method: &str,
-        roles: &[String],
-    ) -> bool {
+    fn evaluate(&self, node: &TrieNode, segments: &[&str], method: &str, roles: &[String]) -> bool {
         if segments.is_empty() {
             let result = self.check_roles(node, method, roles);
             tracing::trace!(
@@ -201,8 +198,8 @@ impl PolicyEngine {
 fn seg_matches(seg: &Segment, value: &str) -> bool {
     match seg {
         Segment::Literal(s) => s == value,
-        Segment::Param(_)   => true,  // named param matches any single segment
-        Segment::Wildcard   => true,  // anonymous wildcard matches any single segment
-        Segment::Glob       => unreachable!("glob is handled separately"),
+        Segment::Param(_) => true, // named param matches any single segment
+        Segment::Wildcard => true, // anonymous wildcard matches any single segment
+        Segment::Glob => unreachable!("glob is handled separately"),
     }
 }

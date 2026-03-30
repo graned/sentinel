@@ -1,8 +1,8 @@
 use crate::{
     compile,
+    compiler::parse_path, // make parse_path pub(crate) for testing
     engine::PolicyEngine,
     types::{CompileError, PolicyBundle, Segment},
-    compiler::parse_path, // make parse_path pub(crate) for testing
 };
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -49,10 +49,13 @@ fn test_from_bytes_invalid_data() {
 #[test]
 fn test_parse_literal_segments() {
     let segs = parse_path("/users/profile").unwrap();
-    assert_eq!(segs, vec![
-        Segment::Literal("users".into()),
-        Segment::Literal("profile".into()),
-    ]);
+    assert_eq!(
+        segs,
+        vec![
+            Segment::Literal("users".into()),
+            Segment::Literal("profile".into()),
+        ]
+    );
 }
 
 #[test]
@@ -119,7 +122,8 @@ fn test_no_match_unknown_path() {
 
 #[test]
 fn test_deep_literal_path() {
-    let e = engine(r#"{"rules":[{"method":"POST","path":"/api/v1/users/create","roles":["admin"]}]}"#);
+    let e =
+        engine(r#"{"rules":[{"method":"POST","path":"/api/v1/users/create","roles":["admin"]}]}"#);
     assert!(e.is_allowed("POST", "/api/v1/users/create", &roles(&["admin"])));
     assert!(!e.is_allowed("POST", "/api/v1/users", &roles(&["admin"])));
 }
@@ -129,9 +133,9 @@ fn test_deep_literal_path() {
 #[test]
 fn test_named_param_matches_any_segment() {
     let e = engine(r#"{"rules":[{"method":"GET","path":"/users/:id","roles":["user"]}]}"#);
-    assert!(e.is_allowed("GET", "/users/123",   &roles(&["user"])));
-    assert!(e.is_allowed("GET", "/users/abc",   &roles(&["user"])));
-    assert!(e.is_allowed("GET", "/users/uuid-x",&roles(&["user"])));
+    assert!(e.is_allowed("GET", "/users/123", &roles(&["user"])));
+    assert!(e.is_allowed("GET", "/users/abc", &roles(&["user"])));
+    assert!(e.is_allowed("GET", "/users/uuid-x", &roles(&["user"])));
 }
 
 #[test]
@@ -179,8 +183,8 @@ fn test_glob_wrong_role() {
 #[test]
 fn test_method_wildcard_matches_any_method() {
     let e = engine(r#"{"rules":[{"method":"*","path":"/public/health","roles":["guest"]}]}"#);
-    assert!(e.is_allowed("GET",    "/public/health", &roles(&["guest"])));
-    assert!(e.is_allowed("POST",   "/public/health", &roles(&["guest"])));
+    assert!(e.is_allowed("GET", "/public/health", &roles(&["guest"])));
+    assert!(e.is_allowed("POST", "/public/health", &roles(&["guest"])));
     assert!(e.is_allowed("DELETE", "/public/health", &roles(&["guest"])));
 }
 
@@ -190,13 +194,15 @@ fn test_method_wildcard_matches_any_method() {
 fn test_literal_takes_precedence_over_param() {
     // Literal rule allows only admin; param rule allows user
     // A request matching the literal should require admin, not fall through to param
-    let e = engine(r#"{"rules":[
+    let e = engine(
+        r#"{"rules":[
         {"method":"GET","path":"/users/me",  "roles":["admin"]},
         {"method":"GET","path":"/users/:id", "roles":["user"]}
-    ]}"#);
+    ]}"#,
+    );
 
     // "me" matches literal first — user role should NOT be enough
-    assert!(e.is_allowed("GET", "/users/me",  &roles(&["admin"])));
+    assert!(e.is_allowed("GET", "/users/me", &roles(&["admin"])));
     assert!(!e.is_allowed("GET", "/users/me", &roles(&["user"])));
 
     // "123" only matches :id — user role is sufficient
@@ -205,10 +211,12 @@ fn test_literal_takes_precedence_over_param() {
 
 #[test]
 fn test_param_takes_precedence_over_wildcard() {
-    let e = engine(r#"{"rules":[
+    let e = engine(
+        r#"{"rules":[
         {"method":"GET","path":"/a/:id","roles":["admin"]},
         {"method":"GET","path":"/a/*",  "roles":["user"]}
-    ]}"#);
+    ]}"#,
+    );
 
     // :id is more specific than * — user alone should not be enough
     assert!(e.is_allowed("GET", "/a/123", &roles(&["admin"])));
@@ -217,14 +225,16 @@ fn test_param_takes_precedence_over_wildcard() {
 
 #[test]
 fn test_wildcard_takes_precedence_over_glob() {
-    let e = engine(r#"{"rules":[
+    let e = engine(
+        r#"{"rules":[
         {"method":"GET","path":"/a/*", "roles":["admin"]},
         {"method":"GET","path":"/a/**","roles":["user"]}
-    ]}"#);
+    ]}"#,
+    );
 
-    // Single segment — * should match before ** 
-    assert!(e.is_allowed("GET", "/a/x",   &roles(&["admin"])));
-    assert!(!e.is_allowed("GET", "/a/x",  &roles(&["user"])));
+    // Single segment — * should match before **
+    assert!(e.is_allowed("GET", "/a/x", &roles(&["admin"])));
+    assert!(!e.is_allowed("GET", "/a/x", &roles(&["user"])));
 
     // Multi-segment — only ** can match
     assert!(e.is_allowed("GET", "/a/x/y", &roles(&["user"])));
@@ -264,7 +274,7 @@ fn test_empty_rules_bundle() {
 fn test_root_path_rule() {
     let e = engine(r#"{"rules":[{"method":"GET","path":"/","roles":["admin"]}]}"#);
     assert!(e.is_allowed("GET", "/", &roles(&["admin"])));
-    assert!(e.is_allowed("GET", "",  &roles(&["admin"])));
+    assert!(e.is_allowed("GET", "", &roles(&["admin"])));
 }
 
 #[test]
@@ -277,10 +287,12 @@ fn test_case_insensitive_method() {
 #[test]
 fn test_duplicate_rules_merge_roles() {
     // Same path+method declared twice with different roles — both should work
-    let e = engine(r#"{"rules":[
+    let e = engine(
+        r#"{"rules":[
         {"method":"GET","path":"/data","roles":["admin"]},
         {"method":"GET","path":"/data","roles":["analyst"]}
-    ]}"#);
+    ]}"#,
+    );
     assert!(e.is_allowed("GET", "/data", &roles(&["admin"])));
     assert!(e.is_allowed("GET", "/data", &roles(&["analyst"])));
 }

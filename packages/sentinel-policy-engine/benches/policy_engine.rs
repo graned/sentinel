@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use sentinel_policy_engine::{compile, engine::PolicyEngine, types::PolicyBundle};
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -17,8 +17,16 @@ fn roles(r: &[&str]) -> Vec<String> {
 fn generate_policy(n: usize) -> String {
     let methods = ["GET", "POST", "PUT", "DELETE", "PATCH"];
     let resources = [
-        "users", "orders", "products", "invoices", "reports",
-        "teams", "roles", "permissions", "sessions", "audit-logs",
+        "users",
+        "orders",
+        "products",
+        "invoices",
+        "reports",
+        "teams",
+        "roles",
+        "permissions",
+        "sessions",
+        "audit-logs",
     ];
     let role_sets = [
         r#"["admin"]"#,
@@ -30,9 +38,9 @@ fn generate_policy(n: usize) -> String {
     let mut rules = Vec::with_capacity(n);
 
     for i in 0..n {
-        let method  = methods[i % methods.len()];
-        let res     = resources[i % resources.len()];
-        let roles   = role_sets[i % role_sets.len()];
+        let method = methods[i % methods.len()];
+        let res = resources[i % resources.len()];
+        let roles = role_sets[i % role_sets.len()];
 
         // Cycle through path shapes to exercise all trie node types
         let path = match i % 4 {
@@ -92,14 +100,19 @@ fn bench_is_allowed(c: &mut Criterion) {
     // Representative request scenarios
     let scenarios: &[(&str, &str, &str, &[&str])] = &[
         // (label, method, path, roles)
-        ("literal_hit",         "GET",    "/users",                   &["admin"]),
-        ("param_hit",           "GET",    "/users/123",               &["user"]),
-        ("deep_literal_hit",    "GET",    "/users/123/details",       &["admin"]),
-        ("glob_shallow",        "DELETE", "/audit-logs/abc",          &["admin"]),
-        ("glob_deep",           "DELETE", "/audit-logs/abc/xyz/789",  &["admin"]),
-        ("literal_miss",        "GET",    "/nonexistent",             &["admin"]),
-        ("role_denied",         "DELETE", "/users/123",               &["guest"]),
-        ("multi_role_last_wins","POST",   "/orders",                  &["guest","user","admin"]),
+        ("literal_hit", "GET", "/users", &["admin"]),
+        ("param_hit", "GET", "/users/123", &["user"]),
+        ("deep_literal_hit", "GET", "/users/123/details", &["admin"]),
+        ("glob_shallow", "DELETE", "/audit-logs/abc", &["admin"]),
+        ("glob_deep", "DELETE", "/audit-logs/abc/xyz/789", &["admin"]),
+        ("literal_miss", "GET", "/nonexistent", &["admin"]),
+        ("role_denied", "DELETE", "/users/123", &["guest"]),
+        (
+            "multi_role_last_wins",
+            "POST",
+            "/orders",
+            &["guest", "user", "admin"],
+        ),
     ];
 
     // Use a fixed realistic policy for eval benchmarks
@@ -109,13 +122,7 @@ fn bench_is_allowed(c: &mut Criterion) {
     for (label, method, path, r) in scenarios {
         let role_vec = roles(r);
         group.bench_function(*label, |b| {
-            b.iter(|| {
-                engine.is_allowed(
-                    black_box(method),
-                    black_box(path),
-                    black_box(&role_vec),
-                )
-            });
+            b.iter(|| engine.is_allowed(black_box(method), black_box(path), black_box(&role_vec)));
         });
     }
 
@@ -128,26 +135,22 @@ fn bench_eval_throughput(c: &mut Criterion) {
     let engine = make_engine(&policy_json);
 
     let requests: Vec<(&str, &str, Vec<String>)> = vec![
-        ("GET",    "/users",                roles(&["admin"])),
-        ("GET",    "/users/123",            roles(&["user"])),
-        ("PUT",    "/users/123",            roles(&["admin"])),
-        ("DELETE", "/users/123",            roles(&["user"])),   // denied
-        ("GET",    "/orders/456/details",   roles(&["user", "admin"])),
-        ("POST",   "/products",             roles(&["admin"])),
-        ("GET",    "/reports/**",           roles(&["auditor"])),
-        ("PATCH",  "/invoices/789",         roles(&["admin"])),
-        ("GET",    "/nonexistent/path",     roles(&["admin"])),  // miss
-        ("DELETE", "/audit-logs/x/y/z",    roles(&["admin"])),
+        ("GET", "/users", roles(&["admin"])),
+        ("GET", "/users/123", roles(&["user"])),
+        ("PUT", "/users/123", roles(&["admin"])),
+        ("DELETE", "/users/123", roles(&["user"])), // denied
+        ("GET", "/orders/456/details", roles(&["user", "admin"])),
+        ("POST", "/products", roles(&["admin"])),
+        ("GET", "/reports/**", roles(&["auditor"])),
+        ("PATCH", "/invoices/789", roles(&["admin"])),
+        ("GET", "/nonexistent/path", roles(&["admin"])), // miss
+        ("DELETE", "/audit-logs/x/y/z", roles(&["admin"])),
     ];
 
     c.bench_function("eval_throughput_500_rules", |b| {
         b.iter(|| {
             for (method, path, roles) in &requests {
-                black_box(engine.is_allowed(
-                    black_box(method),
-                    black_box(path),
-                    black_box(roles),
-                ));
+                black_box(engine.is_allowed(black_box(method), black_box(path), black_box(roles)));
             }
         });
     });

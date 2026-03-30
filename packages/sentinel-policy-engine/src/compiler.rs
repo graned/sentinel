@@ -50,7 +50,12 @@ pub fn compile(bundle: &PolicyBundle) -> Result<Vec<u8>, CompileError> {
             "Inserting rule into trie"
         );
         let segments = parse_path(&rule.path)?;
-        insert(&mut root, &segments, &rule.method.to_uppercase(), &rule.roles);
+        insert(
+            &mut root,
+            &segments,
+            &rule.method.to_uppercase(),
+            &rule.roles,
+        );
     }
 
     // Sort the entire trie by precedence before serializing
@@ -123,7 +128,10 @@ fn insert(node: &mut TrieNode, segments: &[Segment], method: &str, roles: &[Stri
     }
 
     // Find existing child with this segment or create a new one
-    let pos = node.children.iter().position(|(seg, _)| *seg == segments[0]);
+    let pos = node
+        .children
+        .iter()
+        .position(|(seg, _)| *seg == segments[0]);
     let child = if let Some(i) = pos {
         &mut node.children[i].1
     } else {
