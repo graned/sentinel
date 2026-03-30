@@ -60,9 +60,7 @@ pub async fn authenticate(
     Extension(state): Extension<Arc<AppState>>,
     ValidatedBearer(access_token): ValidatedBearer,
 ) -> Result<RawResponse<AuthContextResponse>, ApiError> {
-    let request = AuthenticateRequest {
-        access_token,
-    };
+    let request = AuthenticateRequest { access_token };
     match state.auth_application.authenticate_token(request).await {
         Ok(res) => {
             tracing::debug!("Valid token for {:#?}", res);

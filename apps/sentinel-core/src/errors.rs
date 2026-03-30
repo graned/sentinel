@@ -421,9 +421,7 @@ impl From<GenericParserError> for ServiceError {
         match err {
             GenericParserError::ClaimError {
                 source: PasetoClaimError::Expired,
-            } => {
-                ServiceError::ExpiredTokenError("Token expired".into())
-            }
+            } => ServiceError::ExpiredTokenError("Token expired".into()),
             _ => ServiceError::InvalidTokenError("Token parsing failed".into()),
         }
     }

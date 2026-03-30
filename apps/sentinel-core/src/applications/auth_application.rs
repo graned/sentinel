@@ -238,9 +238,7 @@ impl AuthApplication {
                     };
 
                     // insert identity
-                    identity_service
-                        .create_identity(trx, &new_identity)
-                        .await?;
+                    identity_service.create_identity(trx, &new_identity).await?;
                     let role = user_role_service
                         .get_role_by_type(trx, RoleType::User)
                         .await?;
@@ -251,9 +249,7 @@ impl AuthApplication {
                         created_at: Utc::now(),
                         created_by: Some(new_user.user_id),
                     };
-                    user_role_service
-                        .add_role_to_user(trx, &user_role)
-                        .await?;
+                    user_role_service.add_role_to_user(trx, &user_role).await?;
                     // add log message
                     tracing::debug!("User with email {} regisered successfully", request.email);
                     // Create and return User Response
@@ -594,9 +590,7 @@ impl AuthApplication {
                         })?;
 
                     // MFA gate: if TOTP enrolled and enabled, issue a challenge token
-                    let mfa_enabled = mfa_totp_service
-                        .is_mfa_enabled(trx, user.user_id)
-                        .await?;
+                    let mfa_enabled = mfa_totp_service.is_mfa_enabled(trx, user.user_id).await?;
                     if mfa_enabled {
                         let mfa_token =
                             session_service.generate_mfa_challenge_token(user.user_id)?;
@@ -656,10 +650,7 @@ impl AuthApplication {
                         .await
                         .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
 
-                    tracing::info!(
-                        "Valid Credentials for email: {}",
-                        found_identity.email
-                    );
+                    tracing::info!("Valid Credentials for email: {}", found_identity.email);
 
                     // Return response
                     let response = BasicLoginResponse {
