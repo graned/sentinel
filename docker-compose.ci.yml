@@ -34,15 +34,13 @@ services:
     restart: "no"
 
   # ── Application server ────────────────────────────────────────────────────
-  # Compiles and starts the real HTTP server. The test-runner waits for the
-  # /health endpoint to respond before running any tests.
+  # Uses a pre-built production image (compiled binary — no cargo compile step).
+  # The CI workflow builds this image with BuildKit+GHA cache before calling
+  # `docker compose up`, so startup is near-instant.
+  # SENTINEL_CORE_IMAGE must be set in the environment before running compose.
   sentinel-core:
-    build:
-      context: .
-      dockerfile: apps/sentinel-core/Dockerfile.dev
-    command: cargo run --manifest-path apps/sentinel-core/Cargo.toml
+    image: ${SENTINEL_CORE_IMAGE}
     environment:
-      - RUST_LOG=info
       - APP_HOST=0.0.0.0
       - APP_PORT=8000
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/sentinel_auth
@@ -52,20 +50,12 @@ services:
       - OIDC_ISSUER_URL=http://sentinel-core:8000
       - FRONTEND_URL=http://localhost:3000
       - CORS_ALLOWED_ORIGINS=http://localhost:3000
-    volumes:
-      - ./Cargo.toml:/app/Cargo.toml:ro
-      - ./Cargo.lock:/app/Cargo.lock:ro
-      - ./apps/sentinel-core:/app/apps/sentinel-core
-      - ./packages/sentinel-policy-engine:/app/packages/sentinel-policy-engine
-      - cargo-cache:/usr/local/cargo/registry
-      - cargo-target:/app/target
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/v1/api/system/health"]
-      # start_period gives the initial cargo compile time before checks begin
-      start_period: 180s
-      interval: 10s
+      start_period: 15s
+      interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 10
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -73,12 +63,13 @@ services:
       - ci-network
 
   # ── Test runner ───────────────────────────────────────────────────────────
-  # Runs only after sentinel-core is healthy. APP_HOST points at the server
-  # container so get_server_url() in tests/common/setup.rs resolves correctly.
+  # Uses a pre-built dev image (Rust toolchain + tools — no apt/cargo-install
+  # step) and mounts source as a volume so cargo test compiles only application
+  # code. APP_HOST points at the server container so setup.rs resolves the
+  # correct target URL.
+  # SENTINEL_CORE_DEV_IMAGE must be set in the environment before running compose.
   test-runner:
-    build:
-      context: .
-      dockerfile: apps/sentinel-core/Dockerfile.dev
+    image: ${SENTINEL_CORE_DEV_IMAGE}
     command: cargo test --workspace --locked
     environment:
       - RUST_LOG=info
@@ -96,17 +87,11 @@ services:
       - ./Cargo.lock:/app/Cargo.lock:ro
       - ./apps/sentinel-core:/app/apps/sentinel-core
       - ./packages/sentinel-policy-engine:/app/packages/sentinel-policy-engine
-      - cargo-cache:/usr/local/cargo/registry
-      - cargo-target:/app/target
     depends_on:
       sentinel-core:
         condition: service_healthy
     networks:
       - ci-network
-
-volumes:
-  cargo-cache:
-  cargo-target:
 
 networks:
   ci-network:

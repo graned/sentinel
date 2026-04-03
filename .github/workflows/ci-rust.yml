@@ -48,7 +48,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: docker/setup-buildx-action@v3
+
+      # Build the production server image and load it into the local daemon.
+      # On cache hit (no source changes) this completes in ~20 s instead of
+      # 6-8 min; the sentinel-core service in compose starts the binary
+      # directly with no compilation step.
+      - name: Build sentinel-core server image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/sentinel-core/Dockerfile
+          push: false
+          load: true
+          tags: sentinel-core:ci
+          cache-from: type=gha,scope=sentinel-core-prod
+          cache-to: type=gha,mode=max,scope=sentinel-core-prod
+
+      # Build the dev toolchain image used by the test-runner service.
+      # Caches the apt + cargo-install layers so only the test compilation
+      # itself is left on subsequent runs.
+      - name: Build test-runner dev image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/sentinel-core/Dockerfile.dev
+          push: false
+          load: true
+          tags: sentinel-core-dev:ci
+          cache-from: type=gha,scope=sentinel-core-dev
+          cache-to: type=gha,mode=max,scope=sentinel-core-dev
+
       - name: Run tests via Docker Compose
+        env:
+          SENTINEL_CORE_IMAGE: sentinel-core:ci
+          SENTINEL_CORE_DEV_IMAGE: sentinel-core-dev:ci
         run: |
           docker compose -f docker-compose.ci.yml up \
             --exit-code-from test-runner \
