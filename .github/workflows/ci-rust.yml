@@ -23,6 +23,13 @@ env:
   REGISTRY: ghcr.io
   IMAGE: ghcr.io/${{ github.repository_owner }}/sentinel-core
 
+# Cancel any in-progress run for the same branch/PR when a new commit arrives.
+# On main, runs queue rather than cancel (cancel-in-progress: false) so every
+# merge is always tested and tagged.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   # ── Detect Rust file changes ───────────────────────────────────────────────
   changes:

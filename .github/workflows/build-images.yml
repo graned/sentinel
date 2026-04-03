@@ -23,6 +23,13 @@ env:
   IMAGE_CORE: ghcr.io/${{ github.repository_owner }}/sentinel-core
   IMAGE_UI: ghcr.io/${{ github.repository_owner }}/sentinel-ui
 
+# Cancel in-progress runs on PRs when a new commit arrives.
+# The promote job (closed+merged) is not affected because it runs once
+# per merge and github.ref is the PR branch, not main.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   # ── Detect TypeScript file changes ────────────────────────────────────────
   # Skipped on closed events — the promote job handles those unconditionally.
