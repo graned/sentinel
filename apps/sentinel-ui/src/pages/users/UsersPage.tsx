@@ -62,12 +62,10 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 
-type StatusVariant = "green" | "warning" | "muted" | "blue";
-
-const STATUS_BADGE: Record<AdminUser["status"], StatusVariant> = {
-  Active: "green",
+const STATUS_BADGE: Record<AdminUser["status"], "active" | "warning" | "inactive" | "blue"> = {
+  Active: "active",
   Suspended: "warning",
-  Inactive: "muted",
+  Inactive: "inactive",
   PendingVerification: "blue",
 };
 
@@ -495,7 +493,7 @@ export function UsersPage() {
                       <td>
                         <div className={styles.roleBadges}>
                           {user.mfa_enabled ? (
-                            <Badge variant="green">Active</Badge>
+                            <Badge variant="active">Active</Badge>
                           ) : user.mfa_required ? (
                             <Badge variant="warning">Required</Badge>
                           ) : (

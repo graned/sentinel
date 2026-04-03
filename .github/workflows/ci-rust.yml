@@ -1,16 +1,17 @@
 name: Rust CI
 
-# Only runs when Rust source changes.
-# UI / SDK / auth-react changes do NOT trigger this workflow.
+# Triggers:
+#   pull_request (opened/synchronize/reopened) — NO path filter intentionally.
+#     Every PR event must reach changes + build-core so that PRs with zero
+#     Rust-file changes still get a PR-{n} retag, and CI always has a
+#     SENTINEL_CORE_IMAGE to run against.
+#   push to main — path-filtered to Rust sources only (TS-only pushes skip
+#     this workflow entirely).
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
-    paths:
-      - "apps/sentinel-core/**"
-      - "packages/sentinel-policy-engine/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-  pull_request:
     paths:
       - "apps/sentinel-core/**"
       - "packages/sentinel-policy-engine/**"
@@ -19,11 +20,46 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  REGISTRY: ghcr.io
+  IMAGE: ghcr.io/${{ github.repository_owner }}/sentinel-core
+  MIGRATE_IMAGE: ghcr.io/${{ github.repository_owner }}/sentinel-migrate:latest
+
+# Cancel any in-progress run for the same branch/PR when a new commit arrives.
+# On main, runs queue rather than cancel (cancel-in-progress: false) so every
+# merge is always tested and tagged.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  # ── Detect Rust file changes ───────────────────────────────────────────────
+  changes:
+    name: Detect Rust changes
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            rust:
+              - 'apps/sentinel-core/**'
+              - 'packages/sentinel-policy-engine/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+
   # ── Format + Clippy ────────────────────────────────────────────────────────
+  # Runs in parallel with build-core. Only fires when Rust files are in the
+  # delta (or on a direct push to main, which is always Rust-filtered).
   lint:
     name: Format & Clippy
+    needs: changes
+    if: needs.changes.outputs.rust == 'true' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,13 +76,209 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-  # ── Integration tests ──────────────────────────────────────────────────────
-  test:
-    name: Tests
+  # ── Build / retag sentinel-core image ─────────────────────────────────────
+  # On PR events (regardless of what files changed):
+  #   • Rust changed  → full build, push ghcr.io/.../sentinel-core:PR-{n}
+  #   • No Rust change → imagetools retag latest → PR-{n}  (zero layer transfer)
+  #     If latest doesn't exist yet (first-ever run) fall back to full build.
+  #
+  # On push to main (direct push / squash-and-merge without PR):
+  #   → full build, push sha-{short} + latest
+  #
+  # Outputs image_tag consumed by the test job so there is no race condition.
+  build-core:
+    name: Build / retag sentinel-core
+    needs: changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.set-tag.outputs.image_tag }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run tests via Docker Compose
-        run: docker compose -f docker-compose.dev.yml run --remove-orphans sentinel-core cargo test
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── PR, no Rust changes: retag latest as PR-{n} ───────────────────────
+      - name: Retag latest → PR-${{ github.event.pull_request.number }}
+        if: github.event_name == 'pull_request' && needs.changes.outputs.rust != 'true'
+        run: |
+          IMG="${{ env.IMAGE }}"
+          PR="${{ github.event.pull_request.number }}"
+          if docker buildx imagetools inspect "${IMG}:latest" >/dev/null 2>&1; then
+            echo "Retagging ${IMG}:latest → ${IMG}:PR-${PR}"
+            docker buildx imagetools create \
+              -t "${IMG}:PR-${PR}" \
+              "${IMG}:latest"
+          else
+            echo "No latest tag found — flagging for full build fallback"
+            echo "NEEDS_BUILD=true" >> "$GITHUB_ENV"
+          fi
+
+      # ── PR with Rust changes (or latest-missing fallback): full build ──────
+      - name: Build and push PR-${{ github.event.pull_request.number }}
+        if: |
+          github.event_name == 'pull_request' &&
+          (needs.changes.outputs.rust == 'true' || env.NEEDS_BUILD == 'true')
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/sentinel-core/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE }}:PR-${{ github.event.pull_request.number }}
+          cache-from: type=gha,scope=sentinel-core-prod
+          cache-to: type=gha,mode=max,scope=sentinel-core-prod
+
+      # ── Direct push to main: build fresh, push sha + latest ───────────────
+      - name: Compute short SHA
+        if: github.event_name == 'push'
+        id: sha
+        run: echo "short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push sha-${{ steps.sha.outputs.short }} + latest
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/sentinel-core/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ steps.sha.outputs.short }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha,scope=sentinel-core-prod
+          cache-to: type=gha,mode=max,scope=sentinel-core-prod
+
+      # ── Emit the tag for downstream jobs ──────────────────────────────────
+      - name: Set image_tag output
+        id: set-tag
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "image_tag=${{ env.IMAGE }}:PR-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "image_tag=${{ env.IMAGE }}:sha-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── Integration tests ──────────────────────────────────────────────────────
+  # Depends on build-core so the image is guaranteed to exist before tests run.
+  # Uses the image_tag output from build-core — no polling, no race condition.
+  test:
+    name: Integration Tests
+    needs: [build-core]
+    if: needs.build-core.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull sentinel-core image
+        run: docker pull ${{ needs.build-core.outputs.image_tag }}
+
+      # Build migrate image once; skip the build entirely if the image
+      # already exists in GHCR (diesel_cli compile takes ~5 min).
+      - name: Build or pull migrate image
+        run: |
+          IMG="${{ env.MIGRATE_IMAGE }}"
+          if docker buildx imagetools inspect "${IMG}" >/dev/null 2>&1; then
+            echo "Migrate image already exists — pulling ${IMG}"
+            docker pull "${IMG}"
+          else
+            echo "Migrate image not found — building and pushing ${IMG}"
+            docker buildx build \
+              --push \
+              --cache-from type=gha,scope=sentinel-migrate \
+              --cache-to type=gha,mode=max,scope=sentinel-migrate \
+              -t "${IMG}" \
+              -f apps/sentinel-core/Dockerfile.migrate \
+              .
+            docker pull "${IMG}"
+          fi
+
+      - name: Build test-runner dev image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/sentinel-core/Dockerfile.dev
+          push: false
+          load: true
+          tags: sentinel-core-dev:ci
+          cache-from: type=gha,scope=sentinel-core-dev
+          cache-to: type=gha,mode=max,scope=sentinel-core-dev
+
+      # Start postgres → migrate (one-shot) → sentinel-core in detached mode.
+      # Poll the Docker healthcheck status explicitly so we get container logs
+      # on failure instead of an opaque --wait error.
+      - name: Start infrastructure
+        env:
+          SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
+          SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
+          SENTINEL_CORE_DEV_IMAGE: sentinel-core-dev:ci
+        run: |
+          # Start only infrastructure — test-runner is run separately below.
+          # Starting all services would make compose error immediately when
+          # sentinel-core exits (test-runner dep fails) before the poll loop runs.
+          docker compose -f docker-compose.ci.yml up -d sentinel-core || {
+            echo "=== docker compose up failed — dumping all logs ==="
+            docker compose -f docker-compose.ci.yml logs
+            exit 1
+          }
+
+          echo "Waiting for sentinel-core to become healthy..."
+          for i in $(seq 1 36); do
+            CID=$(docker compose -f docker-compose.ci.yml ps -q sentinel-core)
+            if [ -z "$CID" ]; then
+              echo "sentinel-core container not found — showing all logs:"
+              docker compose -f docker-compose.ci.yml logs
+              exit 1
+            fi
+            HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "$CID" 2>/dev/null)
+            STATE=$(docker inspect --format='{{.State.Status}}'         "$CID" 2>/dev/null)
+            echo "  [$i/36] state=$STATE health=$HEALTH"
+            if [ "$HEALTH" = "healthy" ]; then
+              echo "sentinel-core is healthy"
+              exit 0
+            fi
+            if [ "$STATE" = "exited" ] || [ "$STATE" = "dead" ]; then
+              echo "sentinel-core exited unexpectedly — logs:"
+              docker compose -f docker-compose.ci.yml logs sentinel-core
+              exit 1
+            fi
+            sleep 5
+          done
+          echo "Timed out waiting for sentinel-core — logs:"
+          docker compose -f docker-compose.ci.yml logs sentinel-core
+          exit 1
+
+      - name: Run integration tests
+        env:
+          SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
+          SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
+          SENTINEL_CORE_DEV_IMAGE: sentinel-core-dev:ci
+        run: |
+          docker compose -f docker-compose.ci.yml run --rm test-runner
+
+      - name: Tear down
+        if: always()
+        env:
+          SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
+          SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
+          SENTINEL_CORE_DEV_IMAGE: sentinel-core-dev:ci
+        run: docker compose -f docker-compose.ci.yml down --volumes

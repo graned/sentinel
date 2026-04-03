@@ -5,8 +5,6 @@ import {
   Area,
   BarChart,
   Bar,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,
@@ -19,10 +17,7 @@ import {
 } from "recharts";
 import { adminApi } from "../../api/admin";
 import { authApi } from "../../api/auth";
-import { Card } from "../../components/ui/Card";
-import { StatCard } from "../../components/ui/StatCard";
-import { Badge } from "../../components/ui/Badge";
-import { EmptyState } from "../../components/ui/EmptyState";
+
 import bgDecoration from "../../assets/bg-decoration.svg";
 import styles from "./DashboardPage.module.css";
 
@@ -515,7 +510,7 @@ export function DashboardPage() {
                   </Pie>
                   <Tooltip
                     contentStyle={CHART_TOOLTIP_STYLE}
-                    formatter={(v: number) => [`${v.toFixed(1)}%`, ""]}
+                    formatter={(v) => [`${Number(v).toFixed(1)}%`, ""]}
                   />
                   <Legend
                     iconType="circle"

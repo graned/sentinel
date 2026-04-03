@@ -6,7 +6,7 @@ import { Button } from "@sentinel/auth-react";
 import { Badge } from "../../components/ui/Badge";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState } from "../../components/ui/EmptyState";
-import type { ApiTokenData, CreateApiTokenRequest } from "../../types";
+import type { ApiToken as ApiTokenData, CreateApiTokenRequest } from "../../types";
 import type { UserProfileData } from "@sentinel/auth-sdk";
 import styles from "./TokensPage.module.css";
 

@@ -1,0 +1,99 @@
+services:
+  # ── Database ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: sentinel_auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ci-network
+
+  # ── Migrations ────────────────────────────────────────────────────────────
+  # Uses a pre-built GHCR image so diesel_cli is never compiled in CI.
+  # SENTINEL_MIGRATE_IMAGE must be set before running compose.
+  migrate:
+    image: ${SENTINEL_MIGRATE_IMAGE}
+    command: sh -c "cd apps/sentinel-core && diesel migration run"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/sentinel_auth
+    volumes:
+      - ./apps/sentinel-core:/app/apps/sentinel-core
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ci-network
+    restart: "no"
+
+  # ── Application server ────────────────────────────────────────────────────
+  # Uses a pre-built production image (compiled binary — no cargo compile step).
+  # The CI workflow builds this image with BuildKit+GHA cache before calling
+  # `docker compose up`, so startup is near-instant.
+  # SENTINEL_CORE_IMAGE must be set in the environment before running compose.
+  sentinel-core:
+    image: ${SENTINEL_CORE_IMAGE}
+    environment:
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/sentinel_auth
+      - HEX_KEY=32a8c0fc962ce0299e8f5dedb1ff75b7e8789416db8f6836fb91c6e7bd2e58fe
+      - CONFIG_ENCRYPTION_KEY=02b96ece27c893f176d52139c17ef97db53283a3b0a75e185c2a9da7c1855db5
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info
+      - OIDC_ISSUER_URL=http://sentinel-core:8000
+      - FRONTEND_URL=http://localhost:3000
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/api/system/health"]
+      start_period: 15s
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - ci-network
+
+  # ── Test runner ───────────────────────────────────────────────────────────
+  # Uses a pre-built dev image (Rust toolchain + tools — no apt/cargo-install
+  # step) and mounts source as a volume so cargo test compiles only application
+  # code. APP_HOST points at the server container so setup.rs resolves the
+  # correct target URL.
+  # SENTINEL_CORE_DEV_IMAGE must be set in the environment before running compose.
+  test-runner:
+    image: ${SENTINEL_CORE_DEV_IMAGE}
+    command: cargo test --workspace --locked
+    environment:
+      - RUST_LOG=info
+      - APP_HOST=sentinel-core
+      - APP_PORT=8000
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/sentinel_auth
+      - HEX_KEY=32a8c0fc962ce0299e8f5dedb1ff75b7e8789416db8f6836fb91c6e7bd2e58fe
+      - CONFIG_ENCRYPTION_KEY=02b96ece27c893f176d52139c17ef97db53283a3b0a75e185c2a9da7c1855db5
+      - RUST_BACKTRACE=1
+      - OIDC_ISSUER_URL=http://sentinel-core:8000
+      - FRONTEND_URL=http://localhost:3000
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000
+    volumes:
+      - ./Cargo.toml:/app/Cargo.toml:ro
+      - ./Cargo.lock:/app/Cargo.lock:ro
+      - ./apps/sentinel-core:/app/apps/sentinel-core
+      - ./packages/sentinel-policy-engine:/app/packages/sentinel-policy-engine
+    depends_on:
+      sentinel-core:
+        condition: service_healthy
+    networks:
+      - ci-network
+
+networks:
+  ci-network:
+    driver: bridge

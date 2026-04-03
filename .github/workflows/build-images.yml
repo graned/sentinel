@@ -1,0 +1,222 @@
+name: Build & Push Docker Images
+
+# Triggers:
+#   pull_request (opened/synchronize/reopened/closed) — NO path filter.
+#     opened/synchronize/reopened: build or retag sentinel-ui as PR-{n}.
+#     closed + merged: promote PR-{n} → sha-{short} + latest for BOTH
+#       sentinel-core and sentinel-ui, then delete the PR-{n} tags.
+#     (ci-rust.yml owns the sentinel-core build; this workflow owns promotion
+#      of both images because only pull_request.closed carries the PR number.)
+#   push to main — TS path-filtered. Builds sentinel-ui directly.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  push:
+    branches: [main]
+    paths:
+      - "apps/sentinel-ui/**"
+      - "packages/sentinel-auth-sdk/**"
+      - "packages/sentinel-auth-react/**"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_CORE: ghcr.io/${{ github.repository_owner }}/sentinel-core
+  IMAGE_UI: ghcr.io/${{ github.repository_owner }}/sentinel-ui
+
+# Cancel in-progress runs on PRs when a new commit arrives.
+# The promote job (closed+merged) is not affected because it runs once
+# per merge and github.ref is the PR branch, not main.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # ── Detect TypeScript file changes ────────────────────────────────────────
+  # Skipped on closed events — the promote job handles those unconditionally.
+  changes:
+    name: Detect TS changes
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      typescript: ${{ steps.filter.outputs.typescript }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            typescript:
+              - 'apps/sentinel-ui/**'
+              - 'packages/sentinel-auth-sdk/**'
+              - 'packages/sentinel-auth-react/**'
+
+  # ── Build / retag sentinel-ui image ───────────────────────────────────────
+  # On PR events (opened/synchronize/reopened):
+  #   • TS changed   → full build, push PR-{n}
+  #   • No TS change → imagetools retag latest → PR-{n}  (zero layer transfer)
+  #     If latest doesn't exist yet fall back to full build.
+  #
+  # On push to main:
+  #   → full build, push sha-{short} + latest
+  build-ui:
+    name: Build / retag sentinel-ui
+    needs: changes
+    if: github.event.action != 'closed' && needs.changes.result != 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── PR, no TS changes: retag latest as PR-{n} ─────────────────────────
+      - name: Retag latest → PR-${{ github.event.pull_request.number }}
+        if: github.event_name == 'pull_request' && needs.changes.outputs.typescript != 'true'
+        run: |
+          IMG="${{ env.IMAGE_UI }}"
+          PR="${{ github.event.pull_request.number }}"
+          if docker buildx imagetools inspect "${IMG}:latest" >/dev/null 2>&1; then
+            echo "Retagging ${IMG}:latest → ${IMG}:PR-${PR}"
+            docker buildx imagetools create \
+              -t "${IMG}:PR-${PR}" \
+              "${IMG}:latest"
+          else
+            echo "No latest tag found — flagging for full build fallback"
+            echo "NEEDS_BUILD=true" >> "$GITHUB_ENV"
+          fi
+
+      # ── PR with TS changes (or latest-missing fallback): full build ────────
+      - name: Build and push PR-${{ github.event.pull_request.number }}
+        if: |
+          github.event_name == 'pull_request' &&
+          (needs.changes.outputs.typescript == 'true' || env.NEEDS_BUILD == 'true')
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/sentinel-ui/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_UI }}:PR-${{ github.event.pull_request.number }}
+          cache-from: type=gha,scope=sentinel-ui
+          cache-to: type=gha,mode=max,scope=sentinel-ui
+          build-args: |
+            VITE_API_URL=${{ vars.VITE_API_URL || '' }}
+
+      # ── Direct push to main: build fresh, push sha + latest ───────────────
+      - name: Compute short SHA
+        if: github.event_name == 'push'
+        id: sha
+        run: echo "short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push sha-${{ steps.sha.outputs.short }} + latest
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/sentinel-ui/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_UI }}:sha-${{ steps.sha.outputs.short }}
+            ${{ env.IMAGE_UI }}:latest
+          cache-from: type=gha,scope=sentinel-ui
+          cache-to: type=gha,mode=max,scope=sentinel-ui
+          build-args: |
+            VITE_API_URL=${{ vars.VITE_API_URL || '' }}
+
+  # ── Promote PR images on merge ─────────────────────────────────────────────
+  # Fires only when a PR is merged into main.
+  # For each image (sentinel-core + sentinel-ui):
+  #   1. Verify the PR-{n} tag exists in GHCR.
+  #   2. Atomically retag it as sha-{short} + latest (no layer transfer).
+  #   3. Delete the PR-{n} tag from GHCR to keep the registry clean.
+  # If a PR-{n} image doesn't exist (e.g. no relevant files changed in that
+  # PR) the step exits cleanly with a skip message.
+  promote:
+    name: Promote PR images → main
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote sentinel-core
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR="${{ github.event.pull_request.number }}"
+          MERGE_SHA="${{ github.event.pull_request.merge_commit_sha }}"
+          SHORT_SHA="${MERGE_SHA:0:7}"
+          IMG="${{ env.IMAGE_CORE }}"
+          PACKAGE="sentinel-core"
+
+          if docker buildx imagetools inspect "${IMG}:PR-${PR}" >/dev/null 2>&1; then
+            echo "Promoting ${IMG}:PR-${PR} → sha-${SHORT_SHA} + latest"
+            docker buildx imagetools create \
+              -t "${IMG}:sha-${SHORT_SHA}" \
+              -t "${IMG}:latest" \
+              "${IMG}:PR-${PR}"
+
+            VERSION_ID=$(gh api "/user/packages/container/${PACKAGE}/versions" \
+              --paginate \
+              --jq ".[] | select(.metadata.container.tags[] == \"PR-${PR}\") | .id" \
+              2>/dev/null | head -1)
+            if [ -n "$VERSION_ID" ]; then
+              gh api --method DELETE "/user/packages/container/${PACKAGE}/versions/${VERSION_ID}"
+              echo "Deleted ${PACKAGE}:PR-${PR} (version ${VERSION_ID})"
+            else
+              echo "Tag PR-${PR} version not found in ${PACKAGE} — skipping delete"
+            fi
+          else
+            echo "No ${IMG}:PR-${PR} found — skipping sentinel-core promotion"
+          fi
+
+      - name: Promote sentinel-ui
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR="${{ github.event.pull_request.number }}"
+          MERGE_SHA="${{ github.event.pull_request.merge_commit_sha }}"
+          SHORT_SHA="${MERGE_SHA:0:7}"
+          IMG="${{ env.IMAGE_UI }}"
+          PACKAGE="sentinel-ui"
+
+          if docker buildx imagetools inspect "${IMG}:PR-${PR}" >/dev/null 2>&1; then
+            echo "Promoting ${IMG}:PR-${PR} → sha-${SHORT_SHA} + latest"
+            docker buildx imagetools create \
+              -t "${IMG}:sha-${SHORT_SHA}" \
+              -t "${IMG}:latest" \
+              "${IMG}:PR-${PR}"
+
+            VERSION_ID=$(gh api "/user/packages/container/${PACKAGE}/versions" \
+              --paginate \
+              --jq ".[] | select(.metadata.container.tags[] == \"PR-${PR}\") | .id" \
+              2>/dev/null | head -1)
+            if [ -n "$VERSION_ID" ]; then
+              gh api --method DELETE "/user/packages/container/${PACKAGE}/versions/${VERSION_ID}"
+              echo "Deleted ${PACKAGE}:PR-${PR} (version ${VERSION_ID})"
+            else
+              echo "Tag PR-${PR} version not found in ${PACKAGE} — skipping delete"
+            fi
+          else
+            echo "No ${IMG}:PR-${PR} found — skipping sentinel-ui promotion"
+          fi
