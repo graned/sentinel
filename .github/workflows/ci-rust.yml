@@ -232,7 +232,14 @@ jobs:
           SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
           SENTINEL_CORE_DEV_IMAGE: sentinel-core-dev:ci
         run: |
-          docker compose -f docker-compose.ci.yml up -d
+          # Start only infrastructure — test-runner is run separately below.
+          # Starting all services would make compose error immediately when
+          # sentinel-core exits (test-runner dep fails) before the poll loop runs.
+          docker compose -f docker-compose.ci.yml up -d sentinel-core || {
+            echo "=== docker compose up failed — dumping all logs ==="
+            docker compose -f docker-compose.ci.yml logs
+            exit 1
+          }
 
           echo "Waiting for sentinel-core to become healthy..."
           for i in $(seq 1 36); do
