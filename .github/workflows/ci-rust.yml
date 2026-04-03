@@ -231,6 +231,7 @@ jobs:
         env:
           SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
           SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
+          SENTINEL_CORE_DEV_IMAGE: sentinel-core-dev:ci
         run: |
           docker compose -f docker-compose.ci.yml up -d --wait sentinel-core
 
