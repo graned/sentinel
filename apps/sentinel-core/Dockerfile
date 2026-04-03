@@ -27,11 +27,12 @@ COPY packages/sentinel-policy-engine/Cargo.toml ./packages/sentinel-policy-engin
 
 # Stub source files so cargo can resolve and compile all dependencies before
 # the real source arrives.
-RUN mkdir -p apps/sentinel-core/src packages/sentinel-policy-engine/src \
+RUN mkdir -p apps/sentinel-core/src apps/sentinel-core/benches packages/sentinel-policy-engine/src \
     && echo 'fn main() {}' > apps/sentinel-core/src/main.rs \
+    && echo 'fn main() {}' > apps/sentinel-core/benches/authz_benchmark.rs \
     && touch packages/sentinel-policy-engine/src/lib.rs \
     && cargo build --release --manifest-path apps/sentinel-core/Cargo.toml \
-    && rm -rf apps/sentinel-core/src packages/sentinel-policy-engine/src
+    && rm -rf apps/sentinel-core/src apps/sentinel-core/benches packages/sentinel-policy-engine/src
 
 # ── Application build ─────────────────────────────────────────────────────────
 COPY apps/sentinel-core ./apps/sentinel-core
