@@ -47,6 +47,7 @@ services:
       - HEX_KEY=32a8c0fc962ce0299e8f5dedb1ff75b7e8789416db8f6836fb91c6e7bd2e58fe
       - CONFIG_ENCRYPTION_KEY=02b96ece27c893f176d52139c17ef97db53283a3b0a75e185c2a9da7c1855db5
       - RUST_BACKTRACE=1
+      - RUST_LOG=info
       - OIDC_ISSUER_URL=http://sentinel-core:8000
       - FRONTEND_URL=http://localhost:3000
       - CORS_ALLOWED_ORIGINS=http://localhost:3000

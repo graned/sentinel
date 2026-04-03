@@ -223,17 +223,42 @@ jobs:
           cache-from: type=gha,scope=sentinel-core-dev
           cache-to: type=gha,mode=max,scope=sentinel-core-dev
 
-      # Start postgres → migrate (one-shot) → sentinel-core, then block
-      # until sentinel-core's healthcheck passes.  Using `up -d --wait`
-      # avoids the `--abort-on-container-exit` trap where the migrate
-      # one-shot exiting would kill sentinel-core before tests run.
+      # Start postgres → migrate (one-shot) → sentinel-core in detached mode.
+      # Poll the Docker healthcheck status explicitly so we get container logs
+      # on failure instead of an opaque --wait error.
       - name: Start infrastructure
         env:
           SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
           SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
           SENTINEL_CORE_DEV_IMAGE: sentinel-core-dev:ci
         run: |
-          docker compose -f docker-compose.ci.yml up -d --wait sentinel-core
+          docker compose -f docker-compose.ci.yml up -d
+
+          echo "Waiting for sentinel-core to become healthy..."
+          for i in $(seq 1 36); do
+            CID=$(docker compose -f docker-compose.ci.yml ps -q sentinel-core)
+            if [ -z "$CID" ]; then
+              echo "sentinel-core container not found — showing all logs:"
+              docker compose -f docker-compose.ci.yml logs
+              exit 1
+            fi
+            HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "$CID" 2>/dev/null)
+            STATE=$(docker inspect --format='{{.State.Status}}'         "$CID" 2>/dev/null)
+            echo "  [$i/36] state=$STATE health=$HEALTH"
+            if [ "$HEALTH" = "healthy" ]; then
+              echo "sentinel-core is healthy"
+              exit 0
+            fi
+            if [ "$STATE" = "exited" ] || [ "$STATE" = "dead" ]; then
+              echo "sentinel-core exited unexpectedly — logs:"
+              docker compose -f docker-compose.ci.yml logs sentinel-core
+              exit 1
+            fi
+            sleep 5
+          done
+          echo "Timed out waiting for sentinel-core — logs:"
+          docker compose -f docker-compose.ci.yml logs sentinel-core
+          exit 1
 
       - name: Run integration tests
         env:
