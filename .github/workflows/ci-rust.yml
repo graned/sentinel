@@ -1,16 +1,17 @@
 name: Rust CI
 
-# Only runs when Rust source changes.
-# UI / SDK / auth-react changes do NOT trigger this workflow.
+# Triggers:
+#   pull_request (opened/synchronize/reopened) — NO path filter intentionally.
+#     Every PR event must reach changes + build-core so that PRs with zero
+#     Rust-file changes still get a PR-{n} retag, and CI always has a
+#     SENTINEL_CORE_IMAGE to run against.
+#   push to main — path-filtered to Rust sources only (TS-only pushes skip
+#     this workflow entirely).
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
-    paths:
-      - "apps/sentinel-core/**"
-      - "packages/sentinel-policy-engine/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-  pull_request:
     paths:
       - "apps/sentinel-core/**"
       - "packages/sentinel-policy-engine/**"
@@ -19,11 +20,36 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  REGISTRY: ghcr.io
+  IMAGE: ghcr.io/${{ github.repository_owner }}/sentinel-core
 
 jobs:
+  # ── Detect Rust file changes ───────────────────────────────────────────────
+  changes:
+    name: Detect Rust changes
+    runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            rust:
+              - 'apps/sentinel-core/**'
+              - 'packages/sentinel-policy-engine/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+
   # ── Format + Clippy ────────────────────────────────────────────────────────
+  # Runs in parallel with build-core. Only fires when Rust files are in the
+  # delta (or on a direct push to main, which is always Rust-filtered).
   lint:
     name: Format & Clippy
+    needs: changes
+    if: needs.changes.outputs.rust == 'true' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,9 +66,103 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
+  # ── Build / retag sentinel-core image ─────────────────────────────────────
+  # On PR events (regardless of what files changed):
+  #   • Rust changed  → full build, push ghcr.io/.../sentinel-core:PR-{n}
+  #   • No Rust change → imagetools retag latest → PR-{n}  (zero layer transfer)
+  #     If latest doesn't exist yet (first-ever run) fall back to full build.
+  #
+  # On push to main (direct push / squash-and-merge without PR):
+  #   → full build, push sha-{short} + latest
+  #
+  # Outputs image_tag consumed by the test job so there is no race condition.
+  build-core:
+    name: Build / retag sentinel-core
+    needs: changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.set-tag.outputs.image_tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── PR, no Rust changes: retag latest as PR-{n} ───────────────────────
+      - name: Retag latest → PR-${{ github.event.pull_request.number }}
+        if: github.event_name == 'pull_request' && needs.changes.outputs.rust != 'true'
+        run: |
+          IMG="${{ env.IMAGE }}"
+          PR="${{ github.event.pull_request.number }}"
+          if docker buildx imagetools inspect "${IMG}:latest" >/dev/null 2>&1; then
+            echo "Retagging ${IMG}:latest → ${IMG}:PR-${PR}"
+            docker buildx imagetools create \
+              -t "${IMG}:PR-${PR}" \
+              "${IMG}:latest"
+          else
+            echo "No latest tag found — flagging for full build fallback"
+            echo "NEEDS_BUILD=true" >> "$GITHUB_ENV"
+          fi
+
+      # ── PR with Rust changes (or latest-missing fallback): full build ──────
+      - name: Build and push PR-${{ github.event.pull_request.number }}
+        if: |
+          github.event_name == 'pull_request' &&
+          (needs.changes.outputs.rust == 'true' || env.NEEDS_BUILD == 'true')
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/sentinel-core/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE }}:PR-${{ github.event.pull_request.number }}
+          cache-from: type=gha,scope=sentinel-core-prod
+          cache-to: type=gha,mode=max,scope=sentinel-core-prod
+
+      # ── Direct push to main: build fresh, push sha + latest ───────────────
+      - name: Compute short SHA
+        if: github.event_name == 'push'
+        id: sha
+        run: echo "short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push sha-${{ steps.sha.outputs.short }} + latest
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/sentinel-core/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ steps.sha.outputs.short }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha,scope=sentinel-core-prod
+          cache-to: type=gha,mode=max,scope=sentinel-core-prod
+
+      # ── Emit the tag for downstream jobs ──────────────────────────────────
+      - name: Set image_tag output
+        id: set-tag
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "image_tag=${{ env.IMAGE }}:PR-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "image_tag=${{ env.IMAGE }}:sha-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+          fi
+
   # ── Integration tests ──────────────────────────────────────────────────────
+  # Depends on build-core so the image is guaranteed to exist before tests run.
+  # Uses the image_tag output from build-core — no polling, no race condition.
   test:
-    name: Tests
+    name: Integration Tests
+    needs: [build-core]
+    if: needs.build-core.result == 'success'
     runs-on: ubuntu-latest
 
     steps:
@@ -50,24 +170,18 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      # Build the production server image and load it into the local daemon.
-      # On cache hit (no source changes) this completes in ~20 s instead of
-      # 6-8 min; the sentinel-core service in compose starts the binary
-      # directly with no compilation step.
-      - name: Build sentinel-core server image
-        uses: docker/build-push-action@v6
+      - uses: docker/login-action@v3
         with:
-          context: .
-          file: apps/sentinel-core/Dockerfile
-          push: false
-          load: true
-          tags: sentinel-core:ci
-          cache-from: type=gha,scope=sentinel-core-prod
-          cache-to: type=gha,mode=max,scope=sentinel-core-prod
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build the dev toolchain image used by the test-runner service.
-      # Caches the apt + cargo-install layers so only the test compilation
-      # itself is left on subsequent runs.
+      - name: Pull sentinel-core image
+        run: docker pull ${{ needs.build-core.outputs.image_tag }}
+
+      # Build the dev toolchain image for the test-runner service.
+      # Stays local (no push); GHA cache means apt + cargo-install layers are
+      # reused across runs so only application code re-compiles.
       - name: Build test-runner dev image
         uses: docker/build-push-action@v6
         with:
@@ -79,9 +193,9 @@ jobs:
           cache-from: type=gha,scope=sentinel-core-dev
           cache-to: type=gha,mode=max,scope=sentinel-core-dev
 
-      - name: Run tests via Docker Compose
+      - name: Run integration tests
         env:
-          SENTINEL_CORE_IMAGE: sentinel-core:ci
+          SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
           SENTINEL_CORE_DEV_IMAGE: sentinel-core-dev:ci
         run: |
           docker compose -f docker-compose.ci.yml up \
