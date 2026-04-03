@@ -37,6 +37,8 @@ jobs:
     name: Detect TS changes
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     outputs:
       typescript: ${{ steps.filter.outputs.typescript }}
     steps:

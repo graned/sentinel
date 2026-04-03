@@ -35,6 +35,8 @@ jobs:
   changes:
     name: Detect Rust changes
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
     steps:
