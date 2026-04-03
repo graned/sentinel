@@ -5,8 +5,6 @@ import {
   Area,
   BarChart,
   Bar,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,
@@ -19,9 +17,6 @@ import {
 } from "recharts";
 import { adminApi } from "../../api/admin";
 import { authApi } from "../../api/auth";
-import { Card } from "../../components/ui/Card";
-import { StatCard } from "../../components/ui/StatCard";
-import { Badge } from "../../components/ui/Badge";
 
 import bgDecoration from "../../assets/bg-decoration.svg";
 import styles from "./DashboardPage.module.css";
