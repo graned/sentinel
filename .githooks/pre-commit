@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Pre-commit hook: run cargo fmt --all if any Rust files are staged.
+
+set -euo pipefail
+
+# Check if any staged files are Rust source files
+if git diff --cached --name-only | grep -q '\.rs$'; then
+    echo "Rust files detected in commit — running cargo fmt --all..."
+    cargo fmt --all
+
+    # Re-stage any files that were reformatted
+    git diff --name-only | grep '\.rs$' | xargs -r git add
+
+    echo "cargo fmt complete."
+fi
