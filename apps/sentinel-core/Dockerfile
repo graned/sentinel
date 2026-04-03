@@ -30,6 +30,7 @@ COPY packages/sentinel-policy-engine/Cargo.toml ./packages/sentinel-policy-engin
 RUN mkdir -p apps/sentinel-core/src apps/sentinel-core/benches \
               packages/sentinel-policy-engine/src packages/sentinel-policy-engine/benches \
     && echo 'fn main() {}' > apps/sentinel-core/src/main.rs \
+    && touch apps/sentinel-core/src/lib.rs \
     && echo 'fn main() {}' > apps/sentinel-core/benches/authz_benchmark.rs \
     && touch packages/sentinel-policy-engine/src/lib.rs \
     && echo 'fn main() {}' > packages/sentinel-policy-engine/benches/policy_engine.rs \
