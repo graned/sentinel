@@ -45,52 +45,8 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_DB: sentinel_auth
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    env:
-      DATABASE_URL: postgresql://postgres:password@localhost:5432/sentinel_auth
-      HEX_KEY: 32a8c0fc962ce0299e8f5dedb1ff75b7e8789416db8f6836fb91c6e7bd2e58fe
-      CONFIG_ENCRYPTION_KEY: 02b96ece27c893f176d52139c17ef97db53283a3b0a75e185c2a9da7c1855db5
-      OIDC_ISSUER_URL: http://localhost:9000
-      FRONTEND_URL: http://localhost:3000
-      CORS_ALLOWED_ORIGINS: http://localhost:3000
-      APP_HOST: 0.0.0.0
-      APP_PORT: "9000"
-
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      # Caches ~/.cargo/registry, ~/.cargo/git, and ./target
-      # Also caches ~/.cargo/bin so diesel_cli is not recompiled on every run.
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Install diesel CLI
-        run: cargo install diesel_cli --no-default-features --features postgres --locked
-
-      - name: Enable pgcrypto extension
-        run: |
-          PGPASSWORD=password psql \
-            -h localhost -U postgres -d sentinel_auth \
-            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
-
-      - name: Run migrations
-        working-directory: apps/sentinel-core
-        run: diesel migration run
-
-      - name: cargo test (workspace)
-        run: cargo test --workspace --locked
+      - name: Run tests via Docker Compose
+        run: docker compose -f docker-compose.dev.yml run --remove-orphans sentinel-core cargo test
