@@ -22,6 +22,7 @@ env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
   IMAGE: ghcr.io/${{ github.repository_owner }}/sentinel-core
+  MIGRATE_IMAGE: ghcr.io/${{ github.repository_owner }}/sentinel-migrate:latest
 
 # Cancel any in-progress run for the same branch/PR when a new commit arrives.
 # On main, runs queue rather than cancel (cancel-in-progress: false) so every
@@ -191,6 +192,26 @@ jobs:
       # Build the dev toolchain image for the test-runner service.
       # Stays local (no push); GHA cache means apt + cargo-install layers are
       # reused across runs so only application code re-compiles.
+      # Build migrate image once; skip the build entirely if the image
+      # already exists in GHCR (diesel_cli compile takes ~5 min).
+      - name: Build or pull migrate image
+        run: |
+          IMG="${{ env.MIGRATE_IMAGE }}"
+          if docker buildx imagetools inspect "${IMG}" >/dev/null 2>&1; then
+            echo "Migrate image already exists — pulling ${IMG}"
+            docker pull "${IMG}"
+          else
+            echo "Migrate image not found — building and pushing ${IMG}"
+            docker buildx build \
+              --push \
+              --cache-from type=gha,scope=sentinel-migrate \
+              --cache-to type=gha,mode=max,scope=sentinel-migrate \
+              -t "${IMG}" \
+              -f apps/sentinel-core/Dockerfile.migrate \
+              .
+            docker pull "${IMG}"
+          fi
+
       - name: Build test-runner dev image
         uses: docker/build-push-action@v6
         with:
@@ -202,15 +223,29 @@ jobs:
           cache-from: type=gha,scope=sentinel-core-dev
           cache-to: type=gha,mode=max,scope=sentinel-core-dev
 
+      # Start postgres → migrate (one-shot) → sentinel-core, then block
+      # until sentinel-core's healthcheck passes.  Using `up -d --wait`
+      # avoids the `--abort-on-container-exit` trap where the migrate
+      # one-shot exiting would kill sentinel-core before tests run.
+      - name: Start infrastructure
+        env:
+          SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
+          SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
+        run: |
+          docker compose -f docker-compose.ci.yml up -d --wait sentinel-core
+
       - name: Run integration tests
         env:
           SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
+          SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
           SENTINEL_CORE_DEV_IMAGE: sentinel-core-dev:ci
         run: |
-          docker compose -f docker-compose.ci.yml up \
-            --exit-code-from test-runner \
-            --abort-on-container-exit
+          docker compose -f docker-compose.ci.yml run --rm test-runner
 
       - name: Tear down
         if: always()
+        env:
+          SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
+          SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
+          SENTINEL_CORE_DEV_IMAGE: sentinel-core-dev:ci
         run: docker compose -f docker-compose.ci.yml down --volumes

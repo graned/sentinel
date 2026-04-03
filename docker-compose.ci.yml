@@ -17,10 +17,10 @@ services:
       - ci-network
 
   # ── Migrations ────────────────────────────────────────────────────────────
+  # Uses a pre-built GHCR image so diesel_cli is never compiled in CI.
+  # SENTINEL_MIGRATE_IMAGE must be set before running compose.
   migrate:
-    build:
-      context: .
-      dockerfile: apps/sentinel-core/Dockerfile.migrate
+    image: ${SENTINEL_MIGRATE_IMAGE}
     command: sh -c "cd apps/sentinel-core && diesel migration run"
     environment:
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/sentinel_auth
