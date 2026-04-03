@@ -45,6 +45,10 @@ run_oxfmt() {
         warn "Could not find $ui_dir — skipping oxfmt."
         return 0
     fi
+    if [[ ! -f "$ui_dir/node_modules/.bin/oxfmt" ]]; then
+        warn "oxfmt not found (run 'npm install --legacy-peer-deps' in $ui_dir) — skipping."
+        return 0
+    fi
     # oxfmt operates on the src directory; run from the ui package root
     if (cd "$ui_dir" && npx oxfmt src); then
         # Re-stage any files that were reformatted
