@@ -35,6 +35,8 @@ RUN mkdir -p apps/sentinel-core/src apps/sentinel-core/benches \
     && touch packages/sentinel-policy-engine/src/lib.rs \
     && echo 'fn main() {}' > packages/sentinel-policy-engine/benches/policy_engine.rs \
     && cargo build --release --manifest-path apps/sentinel-core/Cargo.toml \
+    && cargo clean --manifest-path apps/sentinel-core/Cargo.toml --release \
+         -p sentinel-core -p sentinel-policy-engine \
     && rm -rf apps/sentinel-core/src apps/sentinel-core/benches \
               packages/sentinel-policy-engine/src packages/sentinel-policy-engine/benches
 
