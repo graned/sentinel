@@ -4,6 +4,20 @@ Thanks for contributing to Sentinel.
 
 Sentinel is a community-driven project. We want contributions that improve security, accessibility, reliability, documentation, developer experience, and long-term maintainability.
 
+## Local setup
+
+After cloning, run:
+
+```bash
+make setup
+```
+
+This configures git to use the `.githooks/` directory, which enables the pre-commit hook that auto-formats staged files before every commit:
+- **Rust** (`.rs`) — `cargo fmt --all`
+- **TypeScript/JavaScript** (`.ts`, `.tsx`, `.js`, `.jsx`) — `oxfmt` (via `npx`)
+
+Both formatters run in parallel. Any reformatted files are automatically re-staged.
+
 ## Before you start
 
 Please:
