@@ -1,0 +1,265 @@
+name: CI
+
+# Triggers:
+#   pull_request (opened/synchronize/reopened/closed) — no path filter.
+#     Every PR event reaches changes + build jobs so:
+#       - PRs with no Rust changes still get a pr-{n} tag (retag from latest)
+#       - integration tests always have a SENTINEL_CORE_IMAGE to run against
+#     closed + merged → promote job (no rebuild, pure retag + tag cleanup)
+#   push to main — path-filtered to Rust + TS sources. TS-only pushes skip
+#     Rust jobs; Rust-only pushes skip TS jobs.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  push:
+    branches: [main]
+    paths:
+      - "apps/sentinel-core/**"
+      - "packages/sentinel-policy-engine/**"
+      - "apps/sentinel-ui/**"
+      - "packages/sentinel-auth-sdk/**"
+      - "packages/sentinel-auth-react/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_CORE: ghcr.io/${{ github.repository_owner }}/sentinel-core
+  IMAGE_UI: ghcr.io/${{ github.repository_owner }}/sentinel-ui
+  MIGRATE_IMAGE: ghcr.io/${{ github.repository_owner }}/sentinel-migrate:latest
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # ── Detect file changes ────────────────────────────────────────────────────
+  changes:
+    name: Detect changes
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+      typescript: ${{ steps.filter.outputs.typescript }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            rust:
+              - 'apps/sentinel-core/**'
+              - 'packages/sentinel-policy-engine/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            typescript:
+              - 'apps/sentinel-ui/**'
+              - 'packages/sentinel-auth-sdk/**'
+              - 'packages/sentinel-auth-react/**'
+
+  # ── Lint Rust ─────────────────────────────────────────────────────────────
+  lint-rust:
+    name: Lint Rust
+    needs: changes
+    if: github.event.action != 'closed' && needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: ./scripts/ci.sh lint core
+
+  # ── Lint TypeScript ────────────────────────────────────────────────────────
+  lint-ts:
+    name: Lint TypeScript
+    needs: changes
+    if: github.event.action != 'closed' && needs.changes.outputs.typescript == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            packages/sentinel-auth-sdk/package-lock.json
+            packages/sentinel-auth-react/package-lock.json
+            apps/sentinel-ui/package-lock.json
+      - run: ./scripts/ci.sh lint ui
+
+  # ── Build / retag sentinel-core ────────────────────────────────────────────
+  # PRs: always runs regardless of Rust changes.
+  #   - Rust changed  → tango dance (full build)
+  #   - No Rust change → tango promote latest → pr-{n} (zero layer transfer)
+  # Push to main: only runs when Rust files changed.
+  build-core:
+    name: Build sentinel-core
+    needs: [changes, lint-rust]
+    if: |
+      always() &&
+      github.event.action != 'closed' &&
+      needs.lint-rust.result != 'failure' &&
+      (github.event_name == 'pull_request' || needs.changes.outputs.rust == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.set-tag.outputs.image_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install tango
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: tango
+          git: https://github.com/graned/tango-cli
+      - name: Build
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./scripts/ci.sh build core \
+            --sha "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}" \
+            --event "${{ github.event_name == 'pull_request' && 'pr' || 'commit' }}" \
+            --pr "${{ github.event.pull_request.number }}" \
+            --changed "${{ needs.changes.outputs.rust }}"
+      - name: Set image_tag output
+        id: set-tag
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "image_tag=${{ env.IMAGE_CORE }}:pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "image_tag=${{ env.IMAGE_CORE }}:sha-${GITHUB_SHA:0:12}" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── Build / retag sentinel-ui ──────────────────────────────────────────────
+  # PRs: always runs regardless of TS changes.
+  #   - TS changed    → tango dance (full build)
+  #   - No TS change  → tango promote latest → pr-{n} (zero layer transfer)
+  # Push to main: only runs when TS files changed.
+  build-ui:
+    name: Build sentinel-ui
+    needs: [changes, lint-ts]
+    if: |
+      always() &&
+      github.event.action != 'closed' &&
+      needs.lint-ts.result != 'failure' &&
+      (github.event_name == 'pull_request' || needs.changes.outputs.typescript == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install tango
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: tango
+          git: https://github.com/graned/tango-cli
+      - name: Build
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./scripts/ci.sh build ui \
+            --sha "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}" \
+            --event "${{ github.event_name == 'pull_request' && 'pr' || 'commit' }}" \
+            --pr "${{ github.event.pull_request.number }}" \
+            --changed "${{ needs.changes.outputs.typescript }}" \
+            --build-arg "VITE_API_URL=${{ vars.VITE_API_URL || '' }}"
+
+  # ── Integration tests ──────────────────────────────────────────────────────
+  # Depends only on build-core; runs whenever a sentinel-core image was produced.
+  test:
+    name: Integration Tests
+    needs: [build-core]
+    if: needs.build-core.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run tests
+        env:
+          SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
+          SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
+        run: ./scripts/ci.sh test
+
+  # ── Promote PR images on merge ─────────────────────────────────────────────
+  # Fires only when a PR is closed+merged. No rebuild — pure retag.
+  # Skips per-image promote if no sha tag was built during review
+  # (no changes → latest already points to the correct image).
+  # TODO: replace gh api cleanup with tango native delete once supported.
+  promote:
+    name: Promote PR images
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install tango
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: tango
+          git: https://github.com/graned/tango-cli
+      - name: Promote sentinel-core
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./scripts/ci.sh promote core \
+            --pr-sha  "${{ github.event.pull_request.head.sha }}" \
+            --merge-sha "${{ github.event.pull_request.merge_commit_sha }}"
+      - name: Promote sentinel-ui
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./scripts/ci.sh promote ui \
+            --pr-sha  "${{ github.event.pull_request.head.sha }}" \
+            --merge-sha "${{ github.event.pull_request.merge_commit_sha }}"
+      - name: Delete PR tags
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./scripts/ci.sh cleanup-pr --pr "${{ github.event.pull_request.number }}"
