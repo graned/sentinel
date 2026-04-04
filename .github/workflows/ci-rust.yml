@@ -23,6 +23,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE: ghcr.io/${{ github.repository_owner }}/sentinel-core
   MIGRATE_IMAGE: ghcr.io/${{ github.repository_owner }}/sentinel-migrate:latest
+  DEV_IMAGE: ghcr.io/${{ github.repository_owner }}/sentinel-core-dev:latest
 
 # Cancel any in-progress run for the same branch/PR when a new commit arrives.
 # On main, runs queue rather than cancel (cancel-in-progress: false) so every
@@ -243,6 +244,28 @@ jobs:
             docker pull "${IMG}"
           fi
 
+      # Build dev image once; skip the build entirely if the image already
+      # exists in GHCR (Rust toolchain + diesel_cli install takes ~3 min).
+      # To force a rebuild (e.g. after Dockerfile.dev changes), delete the
+      # sentinel-core-dev package version from GHCR and re-run CI.
+      - name: Build or pull dev image
+        run: |
+          IMG="${{ env.DEV_IMAGE }}"
+          if docker buildx imagetools inspect "${IMG}" >/dev/null 2>&1; then
+            echo "Dev image already exists — pulling ${IMG}"
+            docker pull "${IMG}"
+          else
+            echo "Dev image not found — building and pushing ${IMG}"
+            docker buildx build \
+              --push \
+              --cache-from type=gha,scope=sentinel-core-dev \
+              --cache-to type=gha,mode=max,scope=sentinel-core-dev \
+              -t "${IMG}" \
+              -f apps/sentinel-core/Dockerfile.dev \
+              .
+            docker pull "${IMG}"
+          fi
+
       # Start postgres → migrate (one-shot) → sentinel-core in detached mode.
       # Poll the Docker healthcheck status explicitly so we get container logs
       # on failure instead of an opaque --wait error.
@@ -250,7 +273,7 @@ jobs:
         env:
           SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
           SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
-          SENTINEL_CORE_DEV_IMAGE: sentinel-core-dev:ci
+          SENTINEL_CORE_DEV_IMAGE: ${{ env.DEV_IMAGE }}
         run: |
           # Start only infrastructure — test-runner is run separately below.
           # Starting all services would make compose error immediately when
@@ -291,7 +314,7 @@ jobs:
         env:
           SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
           SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
-          SENTINEL_CORE_DEV_IMAGE: sentinel-core-dev:ci
+          SENTINEL_CORE_DEV_IMAGE: ${{ env.DEV_IMAGE }}
         run: |
           docker compose -f docker-compose.ci.yml run --rm test-runner
 
@@ -300,5 +323,5 @@ jobs:
         env:
           SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
           SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
-          SENTINEL_CORE_DEV_IMAGE: sentinel-core-dev:ci
+          SENTINEL_CORE_DEV_IMAGE: ${{ env.DEV_IMAGE }}
         run: docker compose -f docker-compose.ci.yml down --volumes
