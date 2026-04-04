@@ -210,10 +210,17 @@ jobs:
           TANGO_REGISTRY_USER: ${{ github.actor }}
           TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tango dance \
-            --package sentinel-ui \
-            --event merge \
-            --sha ${{ github.event.pull_request.head.sha }}
+          SHA="${{ github.event.pull_request.head.sha }}"
+          SHORT="${SHA:0:12}"
+          # Same guard as sentinel-core: skip if no sha tag was built (no TS changes).
+          if docker buildx imagetools inspect "${{ env.IMAGE_UI }}:sha-${SHORT}" >/dev/null 2>&1; then
+            tango dance \
+              --package sentinel-ui \
+              --event merge \
+              --sha "${SHA}"
+          else
+            echo "sentinel-ui:sha-${SHORT} not found — PR had no TS changes, skipping promote (main/latest already current)"
+          fi
 
       # TODO: replace with tango native cleanup once tango adds delete support
       - name: Delete PR tags from GHCR
