@@ -188,10 +188,20 @@ jobs:
           TANGO_REGISTRY_USER: ${{ github.actor }}
           TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tango dance \
-            --package sentinel-core \
-            --event merge \
-            --sha ${{ github.event.pull_request.head.sha }}
+          SHA="${{ github.event.pull_request.head.sha }}"
+          SHORT="${SHA:0:12}"
+          # Only promote if a sha tag was actually built during the PR.
+          # When a PR has no Rust changes ci-rust.yml only creates pr-{n} via
+          # tango promote (no rebuild), so sha-{short} never exists and
+          # main/latest already point to the correct image — nothing to do.
+          if docker buildx imagetools inspect "${{ env.IMAGE_CORE }}:sha-${SHORT}" >/dev/null 2>&1; then
+            tango dance \
+              --package sentinel-core \
+              --event merge \
+              --sha "${SHA}"
+          else
+            echo "sentinel-core:sha-${SHORT} not found — PR had no Rust changes, skipping promote (main/latest already current)"
+          fi
 
       - name: Promote sentinel-ui
         env:

@@ -173,7 +173,7 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "image_tag=${{ env.IMAGE }}:pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
           else
-            echo "image_tag=${{ env.IMAGE }}:sha-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+            echo "image_tag=${{ env.IMAGE }}:sha-${GITHUB_SHA:0:12}" >> "$GITHUB_OUTPUT"
           fi
 
   # ── Integration tests ──────────────────────────────────────────────────────
