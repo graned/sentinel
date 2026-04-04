@@ -2,9 +2,9 @@ name: Build & Push Docker Images
 
 # Triggers:
 #   pull_request (opened/synchronize/reopened/closed) — NO path filter.
-#     opened/synchronize/reopened: build or retag sentinel-ui as PR-{n}.
-#     closed + merged: promote PR-{n} → sha-{short} + latest for BOTH
-#       sentinel-core and sentinel-ui, then delete the PR-{n} tags.
+#     opened/synchronize/reopened: build or retag sentinel-ui as pr-{n}.
+#     closed + merged: promote pr-{n} → sha-{short} + main + latest for BOTH
+#       sentinel-core and sentinel-ui, then delete the pr-{n} tags.
 #     (ci-rust.yml owns the sentinel-core build; this workflow owns promotion
 #      of both images because only pull_request.closed carries the PR number.)
 #   push to main — TS path-filtered. Builds sentinel-ui directly.
@@ -55,12 +55,12 @@ jobs:
 
   # ── Build / retag sentinel-ui image ───────────────────────────────────────
   # On PR events (opened/synchronize/reopened):
-  #   • TS changed   → full build, push PR-{n}
-  #   • No TS change → imagetools retag latest → PR-{n}  (zero layer transfer)
-  #     If latest doesn't exist yet fall back to full build.
+  #   • TS changed   → tango dance (full build, push pr-{n} + sha-{short})
+  #   • No TS change → tango promote latest → pr-{n}  (zero layer transfer)
+  #     If latest doesn't exist yet fall back to tango dance (full build).
   #
   # On push to main:
-  #   → full build, push sha-{short} + latest
+  #   → tango dance (full build, push sha-{short} + main + latest)
   build-ui:
     name: Build / retag sentinel-ui
     needs: changes
@@ -81,67 +81,81 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── PR, no TS changes: retag latest as PR-{n} ─────────────────────────
-      - name: Retag latest → PR-${{ github.event.pull_request.number }}
+      - name: Install tango
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: tango
+          git: https://github.com/graned/tango-cli
+
+      # ── PR, no TS changes: retag latest as pr-{n} ─────────────────────────
+      - name: Retag latest → pr-${{ github.event.pull_request.number }}
         if: github.event_name == 'pull_request' && needs.changes.outputs.typescript != 'true'
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           IMG="${{ env.IMAGE_UI }}"
           PR="${{ github.event.pull_request.number }}"
           if docker buildx imagetools inspect "${IMG}:latest" >/dev/null 2>&1; then
-            echo "Retagging ${IMG}:latest → ${IMG}:PR-${PR}"
-            docker buildx imagetools create \
-              -t "${IMG}:PR-${PR}" \
-              "${IMG}:latest"
+            echo "Retagging ${IMG}:latest → ${IMG}:pr-${PR}"
+            tango promote \
+              --package sentinel-ui \
+              --source "${IMG}:latest" \
+              --target-tag "pr-${PR}"
           else
             echo "No latest tag found — flagging for full build fallback"
             echo "NEEDS_BUILD=true" >> "$GITHUB_ENV"
           fi
 
-      # ── PR with TS changes (or latest-missing fallback): full build ────────
-      - name: Build and push PR-${{ github.event.pull_request.number }}
+      # ── PR with TS changes (or latest-missing fallback): tango dance ───────
+      - name: Build and push pr-${{ github.event.pull_request.number }}
         if: |
           github.event_name == 'pull_request' &&
           (needs.changes.outputs.typescript == 'true' || env.NEEDS_BUILD == 'true')
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/sentinel-ui/Dockerfile
-          push: true
-          tags: ${{ env.IMAGE_UI }}:PR-${{ github.event.pull_request.number }}
-          cache-from: type=gha,scope=sentinel-ui
-          cache-to: type=gha,mode=max,scope=sentinel-ui
-          build-args: |
-            VITE_API_URL=${{ vars.VITE_API_URL || '' }}
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tango dance \
+            --package sentinel-ui \
+            --event pr \
+            --sha ${{ github.sha }} \
+            --pr ${{ github.event.pull_request.number }} \
+            --build-arg VITE_API_URL=${{ vars.VITE_API_URL || '' }}
 
-      # ── Direct push to main: build fresh, push sha + latest ───────────────
-      - name: Compute short SHA
+      # ── Direct push to main: tango dance (build + tag main + latest) ───────
+      - name: Build and push sha + main + latest
         if: github.event_name == 'push'
-        id: sha
-        run: echo "short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push sha-${{ steps.sha.outputs.short }} + latest
-        if: github.event_name == 'push'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/sentinel-ui/Dockerfile
-          push: true
-          tags: |
-            ${{ env.IMAGE_UI }}:sha-${{ steps.sha.outputs.short }}
-            ${{ env.IMAGE_UI }}:latest
-          cache-from: type=gha,scope=sentinel-ui
-          cache-to: type=gha,mode=max,scope=sentinel-ui
-          build-args: |
-            VITE_API_URL=${{ vars.VITE_API_URL || '' }}
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tango dance \
+            --package sentinel-ui \
+            --event merge \
+            --sha ${{ github.sha }} \
+            --build-arg VITE_API_URL=${{ vars.VITE_API_URL || '' }}
 
   # ── Promote PR images on merge ─────────────────────────────────────────────
   # Fires only when a PR is merged into main.
+  #
+  # Uses github.event.pull_request.head.sha — the SHA that was actually built
+  # during PR review — to correctly locate and promote the existing image.
+  # This fixes the original bug where merge_commit_sha (a different SHA) was
+  # used, causing the promote to reference an image that was never built.
+  #
   # For each image (sentinel-core + sentinel-ui):
-  #   1. Verify the PR-{n} tag exists in GHCR.
-  #   2. Atomically retag it as sha-{short} + latest (no layer transfer).
-  #   3. Delete the PR-{n} tag from GHCR to keep the registry clean.
-  # If a PR-{n} image doesn't exist (e.g. no relevant files changed in that
-  # PR) the step exits cleanly with a skip message.
+  #   1. tango dance --event merge repoints sha-{pr_head_short} → main + latest
+  #      using digest reuse — no layers are re-pushed.
+  #   2. gh api DELETE removes the stale pr-{n} tag from GHCR.
+  #      TODO: replace gh api delete with a tango native command once
+  #      tango adds delete/cleanup support (no such command exists yet).
   promote:
     name: Promote PR images → main
     if: github.event.action == 'closed' && github.event.pull_request.merged == true
@@ -159,64 +173,51 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install tango
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: tango
+          git: https://github.com/graned/tango-cli
+
       - name: Promote sentinel-core
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR="${{ github.event.pull_request.number }}"
-          MERGE_SHA="${{ github.event.pull_request.merge_commit_sha }}"
-          SHORT_SHA="${MERGE_SHA:0:7}"
-          IMG="${{ env.IMAGE_CORE }}"
-          PACKAGE="sentinel-core"
-
-          if docker buildx imagetools inspect "${IMG}:PR-${PR}" >/dev/null 2>&1; then
-            echo "Promoting ${IMG}:PR-${PR} → sha-${SHORT_SHA} + latest"
-            docker buildx imagetools create \
-              -t "${IMG}:sha-${SHORT_SHA}" \
-              -t "${IMG}:latest" \
-              "${IMG}:PR-${PR}"
-
-            VERSION_ID=$(gh api "/user/packages/container/${PACKAGE}/versions" \
-              --paginate \
-              --jq ".[] | select(.metadata.container.tags[] == \"PR-${PR}\") | .id" \
-              2>/dev/null | head -1)
-            if [ -n "$VERSION_ID" ]; then
-              gh api --method DELETE "/user/packages/container/${PACKAGE}/versions/${VERSION_ID}"
-              echo "Deleted ${PACKAGE}:PR-${PR} (version ${VERSION_ID})"
-            else
-              echo "Tag PR-${PR} version not found in ${PACKAGE} — skipping delete"
-            fi
-          else
-            echo "No ${IMG}:PR-${PR} found — skipping sentinel-core promotion"
-          fi
+          tango dance \
+            --package sentinel-core \
+            --event merge \
+            --sha ${{ github.event.pull_request.head.sha }}
 
       - name: Promote sentinel-ui
         env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tango dance \
+            --package sentinel-ui \
+            --event merge \
+            --sha ${{ github.event.pull_request.head.sha }}
+
+      # TODO: replace with tango native cleanup once tango adds delete support
+      - name: Delete PR tags from GHCR
+        env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR="${{ github.event.pull_request.number }}"
-          MERGE_SHA="${{ github.event.pull_request.merge_commit_sha }}"
-          SHORT_SHA="${MERGE_SHA:0:7}"
-          IMG="${{ env.IMAGE_UI }}"
-          PACKAGE="sentinel-ui"
-
-          if docker buildx imagetools inspect "${IMG}:PR-${PR}" >/dev/null 2>&1; then
-            echo "Promoting ${IMG}:PR-${PR} → sha-${SHORT_SHA} + latest"
-            docker buildx imagetools create \
-              -t "${IMG}:sha-${SHORT_SHA}" \
-              -t "${IMG}:latest" \
-              "${IMG}:PR-${PR}"
-
+          for PACKAGE in sentinel-core sentinel-ui; do
             VERSION_ID=$(gh api "/user/packages/container/${PACKAGE}/versions" \
               --paginate \
-              --jq ".[] | select(.metadata.container.tags[] == \"PR-${PR}\") | .id" \
+              --jq ".[] | select(.metadata.container.tags[] == \"pr-${PR}\") | .id" \
               2>/dev/null | head -1)
             if [ -n "$VERSION_ID" ]; then
               gh api --method DELETE "/user/packages/container/${PACKAGE}/versions/${VERSION_ID}"
-              echo "Deleted ${PACKAGE}:PR-${PR} (version ${VERSION_ID})"
+              echo "Deleted ${PACKAGE}:pr-${PR} (version ${VERSION_ID})"
             else
-              echo "Tag PR-${PR} version not found in ${PACKAGE} — skipping delete"
+              echo "Tag pr-${PR} not found in ${PACKAGE} — skipping delete"
             fi
-          else
-            echo "No ${IMG}:PR-${PR} found — skipping sentinel-ui promotion"
-          fi
+          done
