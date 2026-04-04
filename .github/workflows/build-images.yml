@@ -3,11 +3,12 @@ name: Build & Push Docker Images
 # Triggers:
 #   pull_request (opened/synchronize/reopened/closed) — NO path filter.
 #     opened/synchronize/reopened: build or retag sentinel-ui as pr-{n}.
-#     closed + merged: promote pr-{n} → sha-{short} + main + latest for BOTH
-#       sentinel-core and sentinel-ui, then delete the pr-{n} tags.
+#     closed + merged: no rebuild — promote existing PR images to
+#       sha-{merge_commit_sha} + latest for BOTH sentinel-core and sentinel-ui,
+#       then delete the pr-{n} tags. No `main` tag (redundant with latest).
 #     (ci-rust.yml owns the sentinel-core build; this workflow owns promotion
 #      of both images because only pull_request.closed carries the PR number.)
-#   push to main — TS path-filtered. Builds sentinel-ui directly.
+#   push to main — TS path-filtered. Builds sentinel-ui with sha tag + latest.
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
@@ -127,8 +128,9 @@ jobs:
             --pr ${{ github.event.pull_request.number }} \
             --build-arg VITE_API_URL=${{ vars.VITE_API_URL || '' }}
 
-      # ── Direct push to main: tango dance (build + tag main + latest) ───────
-      - name: Build and push sha + main + latest
+      # ── Direct push to main: build sha tag, then promote to latest ──────────
+      # Uses --event commit so tango never emits the redundant `main` tag.
+      - name: Build and push sha
         if: github.event_name == 'push'
         env:
           TANGO_REGISTRY_HOST: ghcr.io
@@ -138,26 +140,41 @@ jobs:
         run: |
           tango dance \
             --package sentinel-ui \
-            --event merge \
+            --event commit \
             --sha ${{ github.sha }} \
             --build-arg VITE_API_URL=${{ vars.VITE_API_URL || '' }}
 
+      - name: Promote sha → latest
+        if: github.event_name == 'push'
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tango promote \
+            --package sentinel-ui \
+            --sha ${{ github.sha }} \
+            --target-tag latest
+
   # ── Promote PR images on merge ─────────────────────────────────────────────
-  # Fires only when a PR is merged into main.
+  # Fires only when a PR is merged into main. No rebuild — pure retag.
   #
-  # Uses github.event.pull_request.head.sha — the SHA that was actually built
-  # during PR review — to correctly locate and promote the existing image.
-  # This fixes the original bug where merge_commit_sha (a different SHA) was
-  # used, causing the promote to reference an image that was never built.
+  # Lookup:  sha-{pr_head_sha[:12]}  — image built during PR review
+  # Targets: sha-{merge_commit_sha[:12]}  — immutable ref for what landed in main
+  #          latest                        — mutable "current" pointer
+  # Skipped: if the PR had no changes for that image (no sha tag was built),
+  #          latest already points to the correct prior image.
+  # Omitted: `main` tag — redundant with latest.
   #
   # For each image (sentinel-core + sentinel-ui):
-  #   1. tango dance --event merge repoints sha-{pr_head_short} → main + latest
+  #   1. tango promote repoints pr_head sha → merge_commit sha + latest
   #      using digest reuse — no layers are re-pushed.
   #   2. gh api DELETE removes the stale pr-{n} tag from GHCR.
   #      TODO: replace gh api delete with a tango native command once
   #      tango adds delete/cleanup support (no such command exists yet).
   promote:
-    name: Promote PR images → main
+    name: Promote PR images → sha + latest
     if: github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
@@ -188,10 +205,27 @@ jobs:
           TANGO_REGISTRY_USER: ${{ github.actor }}
           TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tango dance \
-            --package sentinel-core \
-            --event merge \
-            --sha ${{ github.event.pull_request.head.sha }}
+          PR_SHA="${{ github.event.pull_request.head.sha }}"
+          MERGE_SHA="${{ github.event.pull_request.merge_commit_sha }}"
+          SHORT="${PR_SHA:0:12}"
+          SHORT_MERGE="${MERGE_SHA:0:12}"
+          # Only promote if a sha tag was actually built during the PR.
+          # When a PR has no Rust changes ci-rust.yml only creates pr-{n} via
+          # tango promote (no rebuild), so sha-{short} never exists and
+          # latest already points to the correct image — nothing to do.
+          # When promoting we target:
+          #   sha-{merge_commit_sha} — immutable ref for what landed in main
+          #   latest                 — mutable "current" pointer
+          # No `main` tag — it is redundant with `latest`.
+          if docker buildx imagetools inspect "${{ env.IMAGE_CORE }}:sha-${SHORT}" >/dev/null 2>&1; then
+            tango promote \
+              --package sentinel-core \
+              --sha "${PR_SHA}" \
+              --target-tag "sha-${SHORT_MERGE}" \
+              --target-tag latest
+          else
+            echo "sentinel-core:sha-${SHORT} not found — PR had no Rust changes, skipping promote (latest already current)"
+          fi
 
       - name: Promote sentinel-ui
         env:
@@ -200,10 +234,20 @@ jobs:
           TANGO_REGISTRY_USER: ${{ github.actor }}
           TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tango dance \
-            --package sentinel-ui \
-            --event merge \
-            --sha ${{ github.event.pull_request.head.sha }}
+          PR_SHA="${{ github.event.pull_request.head.sha }}"
+          MERGE_SHA="${{ github.event.pull_request.merge_commit_sha }}"
+          SHORT="${PR_SHA:0:12}"
+          SHORT_MERGE="${MERGE_SHA:0:12}"
+          # Same guard as sentinel-core: skip if no sha tag was built (no TS changes).
+          if docker buildx imagetools inspect "${{ env.IMAGE_UI }}:sha-${SHORT}" >/dev/null 2>&1; then
+            tango promote \
+              --package sentinel-ui \
+              --sha "${PR_SHA}" \
+              --target-tag "sha-${SHORT_MERGE}" \
+              --target-tag latest
+          else
+            echo "sentinel-ui:sha-${SHORT} not found — PR had no TS changes, skipping promote (latest already current)"
+          fi
 
       # TODO: replace with tango native cleanup once tango adds delete support
       - name: Delete PR tags from GHCR
