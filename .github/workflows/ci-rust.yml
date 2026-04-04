@@ -78,12 +78,12 @@ jobs:
 
   # ── Build / retag sentinel-core image ─────────────────────────────────────
   # On PR events (regardless of what files changed):
-  #   • Rust changed  → full build, push ghcr.io/.../sentinel-core:PR-{n}
-  #   • No Rust change → imagetools retag latest → PR-{n}  (zero layer transfer)
-  #     If latest doesn't exist yet (first-ever run) fall back to full build.
+  #   • Rust changed  → tango dance (full build, push pr-{n} + sha-{short})
+  #   • No Rust change → tango promote latest → pr-{n}  (zero layer transfer)
+  #     If latest doesn't exist yet (first-ever run) fall back to tango dance.
   #
   # On push to main (direct push / squash-and-merge without PR):
-  #   → full build, push sha-{short} + latest
+  #   → tango dance (full build, push sha-{short} + main + latest)
   #
   # Outputs image_tag consumed by the test job so there is no race condition.
   build-core:
@@ -107,61 +107,71 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── PR, no Rust changes: retag latest as PR-{n} ───────────────────────
-      - name: Retag latest → PR-${{ github.event.pull_request.number }}
+      - name: Install tango
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: tango
+          git: https://github.com/graned/tango-cli
+
+      # ── PR, no Rust changes: retag latest as pr-{n} ───────────────────────
+      - name: Retag latest → pr-${{ github.event.pull_request.number }}
         if: github.event_name == 'pull_request' && needs.changes.outputs.rust != 'true'
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           IMG="${{ env.IMAGE }}"
           PR="${{ github.event.pull_request.number }}"
           if docker buildx imagetools inspect "${IMG}:latest" >/dev/null 2>&1; then
-            echo "Retagging ${IMG}:latest → ${IMG}:PR-${PR}"
-            docker buildx imagetools create \
-              -t "${IMG}:PR-${PR}" \
-              "${IMG}:latest"
+            echo "Retagging ${IMG}:latest → ${IMG}:pr-${PR}"
+            tango promote \
+              --package sentinel-core \
+              --source "${IMG}:latest" \
+              --target-tag "pr-${PR}"
           else
             echo "No latest tag found — flagging for full build fallback"
             echo "NEEDS_BUILD=true" >> "$GITHUB_ENV"
           fi
 
-      # ── PR with Rust changes (or latest-missing fallback): full build ──────
-      - name: Build and push PR-${{ github.event.pull_request.number }}
+      # ── PR with Rust changes (or latest-missing fallback): tango dance ─────
+      - name: Build and push pr-${{ github.event.pull_request.number }}
         if: |
           github.event_name == 'pull_request' &&
           (needs.changes.outputs.rust == 'true' || env.NEEDS_BUILD == 'true')
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/sentinel-core/Dockerfile
-          push: true
-          tags: ${{ env.IMAGE }}:PR-${{ github.event.pull_request.number }}
-          cache-from: type=gha,scope=sentinel-core-prod
-          cache-to: type=gha,mode=max,scope=sentinel-core-prod
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tango dance \
+            --package sentinel-core \
+            --event pull-request \
+            --sha ${{ github.sha }} \
+            --pr ${{ github.event.pull_request.number }}
 
-      # ── Direct push to main: build fresh, push sha + latest ───────────────
-      - name: Compute short SHA
+      # ── Direct push to main: tango dance (build + tag main + latest) ───────
+      - name: Build and push sha + main + latest
         if: github.event_name == 'push'
-        id: sha
-        run: echo "short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push sha-${{ steps.sha.outputs.short }} + latest
-        if: github.event_name == 'push'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/sentinel-core/Dockerfile
-          push: true
-          tags: |
-            ${{ env.IMAGE }}:sha-${{ steps.sha.outputs.short }}
-            ${{ env.IMAGE }}:latest
-          cache-from: type=gha,scope=sentinel-core-prod
-          cache-to: type=gha,mode=max,scope=sentinel-core-prod
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tango dance \
+            --package sentinel-core \
+            --event merge \
+            --sha ${{ github.sha }}
 
       # ── Emit the tag for downstream jobs ──────────────────────────────────
       - name: Set image_tag output
         id: set-tag
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "image_tag=${{ env.IMAGE }}:PR-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+            echo "image_tag=${{ env.IMAGE }}:pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
           else
             echo "image_tag=${{ env.IMAGE }}:sha-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
           fi

@@ -1,0 +1,46 @@
+# tango.yaml — image build & promotion config for sentinel
+#
+# CLI: https://github.com/graned/tango-cli
+#
+# Environment variable overrides:
+#   TANGO_REGISTRY_HOST       — override registry.host
+#   TANGO_REGISTRY_NAMESPACE  — override registry.namespace
+#   TANGO_REGISTRY_USER       — override registry.username
+#   TANGO_REGISTRY_PASSWORD   — registry password / token (never put in this file)
+#   TANGO_CONFIG              — path to this file
+#   TANGO_PACKAGE             — active package
+#   TANGO_DRY_RUN             — enable dry-run mode
+#   TANGO_EVENT               — CI event (commit | pr | merge)
+#   TANGO_SHA                 — git commit SHA
+#   TANGO_PR_NUMBER           — pull-request number
+
+registry:
+  host: ghcr.io
+  namespace: graned
+
+defaults:
+  tags:
+    sha_prefix: "sha-"
+    pr_prefix: "pr-"
+    main_tag: "main"
+    latest_tag: "latest"
+    publish_latest_on_merge: true
+
+packages:
+  sentinel-core:
+    image:
+      name: sentinel-core
+      context: .
+      dockerfile: apps/sentinel-core/Dockerfile
+      platforms:
+        - linux/amd64
+
+  sentinel-ui:
+    image:
+      name: sentinel-ui
+      context: .
+      dockerfile: apps/sentinel-ui/Dockerfile
+      platforms:
+        - linux/amd64
+      build_args:
+        VITE_API_URL: ""
