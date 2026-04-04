@@ -149,7 +149,7 @@ jobs:
           tango dance \
             --package sentinel-core \
             --event pull-request \
-            --sha ${{ github.sha }} \
+            --sha ${{ github.event.pull_request.head.sha }} \
             --pr ${{ github.event.pull_request.number }}
 
       # ── Direct push to main: tango dance (build + tag main + latest) ───────

@@ -123,7 +123,7 @@ jobs:
           tango dance \
             --package sentinel-ui \
             --event pull-request \
-            --sha ${{ github.sha }} \
+            --sha ${{ github.event.pull_request.head.sha }} \
             --pr ${{ github.event.pull_request.number }} \
             --build-arg VITE_API_URL=${{ vars.VITE_API_URL || '' }}
 

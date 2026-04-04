@@ -22,6 +22,31 @@ RUN curl -fsSL -o /usr/local/swagger-ui.zip \
 
 ENV SWAGGER_UI_DOWNLOAD_URL="file:///usr/local/swagger-ui.zip"
 
+# ── Dependency caching layer (debug / test profile) ───────────────────────────
+# Pre-compile all crate dependencies with stub sources so that CI test runs
+# only recompile sentinel-core + sentinel-policy-engine (seconds) instead of
+# the full dependency tree (~3 min).
+#
+# NOTE: in development, docker-compose.dev.yml mounts a named volume over
+# /app/target, so these pre-built artifacts are invisible during hot-reload.
+# This layer is purely a CI optimisation and has no effect on the dev experience.
+COPY Cargo.toml Cargo.lock ./
+COPY apps/sentinel-core/Cargo.toml ./apps/sentinel-core/
+COPY packages/sentinel-policy-engine/Cargo.toml ./packages/sentinel-policy-engine/
+
+RUN mkdir -p apps/sentinel-core/src apps/sentinel-core/benches \
+              packages/sentinel-policy-engine/src packages/sentinel-policy-engine/benches \
+    && echo 'fn main() {}' > apps/sentinel-core/src/main.rs \
+    && touch apps/sentinel-core/src/lib.rs \
+    && echo 'fn main() {}' > apps/sentinel-core/benches/authz_benchmark.rs \
+    && touch packages/sentinel-policy-engine/src/lib.rs \
+    && echo 'fn main() {}' > packages/sentinel-policy-engine/benches/policy_engine.rs \
+    && cargo test --workspace --locked --no-run \
+    && cargo clean --manifest-path apps/sentinel-core/Cargo.toml \
+         -p sentinel-core -p sentinel-policy-engine \
+    && rm -rf apps/sentinel-core/src apps/sentinel-core/benches \
+              packages/sentinel-policy-engine/src packages/sentinel-policy-engine/benches
+
 EXPOSE 8000
 
 CMD ["cargo", "watch", "--poll", "-w", "apps/sentinel-core", "-w", "packages/sentinel-policy-engine", "-x", "run --manifest-path apps/sentinel-core/Cargo.toml"]
