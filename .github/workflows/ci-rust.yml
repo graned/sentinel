@@ -78,12 +78,18 @@ jobs:
 
   # ── Build / retag sentinel-core image ─────────────────────────────────────
   # On PR events (regardless of what files changed):
-  #   • Rust changed  → tango dance (full build, push pr-{n} + sha-{short})
+  #   • Rust changed  → tango dance --event commit (full build, push sha-{short})
+  #                     + tango dance --event pull-request (adds pr-{n} tag)
   #   • No Rust change → tango promote latest → pr-{n}  (zero layer transfer)
   #     If latest doesn't exist yet (first-ever run) fall back to tango dance.
   #
   # On push to main (direct push / squash-and-merge without PR):
-  #   → tango dance (full build, push sha-{short} + main + latest)
+  #   → tango dance --event commit (build sha-{short})
+  #   → tango promote sha → latest
+  #   No `main` tag — redundant with latest.
+  #
+  # PR merge promotion (sha-{merge_commit} + latest, no rebuild) is handled
+  # by build-images.yml's promote job using tango promote.
   #
   # Outputs image_tag consumed by the test job so there is no race condition.
   build-core:
@@ -152,8 +158,10 @@ jobs:
             --sha ${{ github.event.pull_request.head.sha }} \
             --pr ${{ github.event.pull_request.number }}
 
-      # ── Direct push to main: tango dance (build + tag main + latest) ───────
-      - name: Build and push sha + main + latest
+      # ── Direct push to main: build sha tag, then promote to latest ──────────
+      # Uses --event commit so tango never emits the redundant `main` tag.
+      # A separate tango promote step adds `latest` explicitly.
+      - name: Build and push sha
         if: github.event_name == 'push'
         env:
           TANGO_REGISTRY_HOST: ghcr.io
@@ -163,8 +171,21 @@ jobs:
         run: |
           tango dance \
             --package sentinel-core \
-            --event merge \
+            --event commit \
             --sha ${{ github.sha }}
+
+      - name: Promote sha → latest
+        if: github.event_name == 'push'
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tango promote \
+            --package sentinel-core \
+            --sha ${{ github.sha }} \
+            --target-tag latest
 
       # ── Emit the tag for downstream jobs ──────────────────────────────────
       - name: Set image_tag output

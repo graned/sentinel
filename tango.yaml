@@ -10,7 +10,8 @@
 #   TANGO_CONFIG              — path to this file
 #   TANGO_PACKAGE             — active package
 #   TANGO_DRY_RUN             — enable dry-run mode
-#   TANGO_EVENT               — CI event (commit | pr | merge)
+#   TANGO_EVENT               — CI event (commit | pr)
+#                               sentinel CI uses tango promote for merge-time retagging
 #   TANGO_SHA                 — git commit SHA
 #   TANGO_PR_NUMBER           — pull-request number
 
@@ -22,9 +23,11 @@ defaults:
   tags:
     sha_prefix: "sha-"
     pr_prefix: "pr-"
-    main_tag: "main"
     latest_tag: "latest"
-    publish_latest_on_merge: true
+    # main_tag and publish_*_on_merge are intentionally omitted:
+    # sentinel never passes --event merge to tango dance; merge-time promotion
+    # is handled by `tango promote` in CI, which targets sha-{merge_commit} +
+    # latest explicitly (no redundant `main` tag).
 
 packages:
   sentinel-core:
