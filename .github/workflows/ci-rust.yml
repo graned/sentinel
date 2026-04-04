@@ -243,17 +243,6 @@ jobs:
             docker pull "${IMG}"
           fi
 
-      - name: Build test-runner dev image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/sentinel-core/Dockerfile.dev
-          push: false
-          load: true
-          tags: sentinel-core-dev:ci
-          cache-from: type=gha,scope=sentinel-core-dev
-          cache-to: type=gha,mode=max,scope=sentinel-core-dev
-
       # Start postgres → migrate (one-shot) → sentinel-core in detached mode.
       # Poll the Docker healthcheck status explicitly so we get container logs
       # on failure instead of an opaque --wait error.
