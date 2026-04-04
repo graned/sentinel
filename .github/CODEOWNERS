@@ -1,0 +1,5 @@
+# Code Owners
+# These users are automatically requested for review when a PR modifies the matching files.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+* @graned
