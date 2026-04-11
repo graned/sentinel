@@ -1,0 +1,84 @@
+name: Release Docker Images
+
+# Triggers when a release tag (e.g. v1.0.0) is pushed.
+# No rebuild — promotes the already-tested sha-{commit} images to the
+# release version tag for both sentinel-core and sentinel-ui.
+#
+# "Most recently deployed" is deduced from the commit the tag points to:
+#   github.sha → sha-{short} → existing GHCR image built when that
+#   commit was merged to main via the normal CI pipeline.
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_CORE: ghcr.io/${{ github.repository_owner }}/sentinel-core
+  IMAGE_UI: ghcr.io/${{ github.repository_owner }}/sentinel-ui
+
+jobs:
+  release:
+    name: Promote images → ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install tango
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: tango
+          git: https://github.com/graned/tango-cli
+
+      # Verify that sha images were built before tagging this release.
+      # Fails fast with a clear message if the tagged commit was never
+      # pushed through the normal CI pipeline (e.g. force-pushed, tagged
+      # before merge, etc.).
+      - name: Verify sha images exist
+        run: |
+          SHORT="${GITHUB_SHA:0:12}"
+          for IMG in "${{ env.IMAGE_CORE }}" "${{ env.IMAGE_UI }}"; do
+            if ! docker buildx imagetools inspect "${IMG}:sha-${SHORT}" >/dev/null 2>&1; then
+              echo "ERROR: ${IMG}:sha-${SHORT} not found in GHCR."
+              echo "The commit this tag points to must be built and pushed to main"
+              echo "via the normal CI pipeline before a release tag can be applied."
+              exit 1
+            fi
+          done
+          echo "Both sha-${SHORT} images confirmed — proceeding with promotion"
+
+      - name: Promote sentinel-core → ${{ github.ref_name }}
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tango promote \
+            --package sentinel-core \
+            --sha ${{ github.sha }} \
+            --target-tag "${{ github.ref_name }}"
+
+      - name: Promote sentinel-ui → ${{ github.ref_name }}
+        env:
+          TANGO_REGISTRY_HOST: ghcr.io
+          TANGO_REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+          TANGO_REGISTRY_USER: ${{ github.actor }}
+          TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tango promote \
+            --package sentinel-ui \
+            --sha ${{ github.sha }} \
+            --target-tag "${{ github.ref_name }}"
