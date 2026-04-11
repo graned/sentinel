@@ -72,7 +72,7 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - run: ./scripts/ci.sh lint core
+      - run: bash scripts/ci.sh lint core
 
   # ── Lint TypeScript ────────────────────────────────────────────────────────
   lint-ts:
@@ -90,7 +90,7 @@ jobs:
             packages/sentinel-auth-sdk/package-lock.json
             packages/sentinel-auth-react/package-lock.json
             apps/sentinel-ui/package-lock.json
-      - run: ./scripts/ci.sh lint ui
+      - run: bash scripts/ci.sh lint ui
 
   # ── Build / retag sentinel-core ────────────────────────────────────────────
   # PRs: always runs regardless of Rust changes.
@@ -131,7 +131,7 @@ jobs:
           TANGO_REGISTRY_USER: ${{ github.actor }}
           TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./scripts/ci.sh build core \
+          bash scripts/ci.sh build core \
             --sha "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}" \
             --event "${{ github.event_name == 'pull_request' && 'pr' || 'commit' }}" \
             --pr "${{ github.event.pull_request.number }}" \
@@ -182,7 +182,7 @@ jobs:
           TANGO_REGISTRY_USER: ${{ github.actor }}
           TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./scripts/ci.sh build ui \
+          bash scripts/ci.sh build ui \
             --sha "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}" \
             --event "${{ github.event_name == 'pull_request' && 'pr' || 'commit' }}" \
             --pr "${{ github.event.pull_request.number }}" \
@@ -211,7 +211,7 @@ jobs:
         env:
           SENTINEL_CORE_IMAGE: ${{ needs.build-core.outputs.image_tag }}
           SENTINEL_MIGRATE_IMAGE: ${{ env.MIGRATE_IMAGE }}
-        run: ./scripts/ci.sh test
+        run: bash scripts/ci.sh test
 
   # ── Promote PR images on merge ─────────────────────────────────────────────
   # Fires only when a PR is closed+merged. No rebuild — pure retag.
@@ -245,7 +245,7 @@ jobs:
           TANGO_REGISTRY_USER: ${{ github.actor }}
           TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./scripts/ci.sh promote core \
+          bash scripts/ci.sh promote core \
             --pr-sha  "${{ github.event.pull_request.head.sha }}" \
             --merge-sha "${{ github.event.pull_request.merge_commit_sha }}"
       - name: Promote sentinel-ui
@@ -255,11 +255,11 @@ jobs:
           TANGO_REGISTRY_USER: ${{ github.actor }}
           TANGO_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./scripts/ci.sh promote ui \
+          bash scripts/ci.sh promote ui \
             --pr-sha  "${{ github.event.pull_request.head.sha }}" \
             --merge-sha "${{ github.event.pull_request.merge_commit_sha }}"
       - name: Delete PR tags
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./scripts/ci.sh cleanup-pr --pr "${{ github.event.pull_request.number }}"
+          bash scripts/ci.sh cleanup-pr --pr "${{ github.event.pull_request.number }}"
