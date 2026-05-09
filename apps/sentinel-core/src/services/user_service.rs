@@ -95,6 +95,20 @@ impl UserService {
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))
     }
 
+    pub async fn update_user_profile(
+        &self,
+        conn: &mut DbConnection<'_>,
+        user_id: Uuid,
+        first_name: Option<String>,
+        last_name: Option<String>,
+        avatar_url: Option<String>,
+    ) -> Result<Option<User>, ServiceError> {
+        self.user_repository
+            .update_user_profile(conn, user_id, first_name, last_name, avatar_url)
+            .await
+            .map_err(|e| ServiceError::DatabaseError(e.to_string()))
+    }
+
     pub async fn delete_user(
         &self,
         conn: &mut DbConnection<'_>,

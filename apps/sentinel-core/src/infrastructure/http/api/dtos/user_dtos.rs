@@ -118,3 +118,14 @@ pub struct UserPermissionsResponse {
     pub user_id: Uuid,
     pub roles: Vec<RoleResponse>,
 }
+
+#[derive(Debug, serde::Deserialize, validator::Validate, utoipa::ToSchema)]
+pub struct UpdateProfileRequest {
+    #[validate(length(min = 1, max = 100))]
+    pub first_name: Option<String>,
+
+    #[validate(length(min = 1, max = 100))]
+    pub last_name: Option<String>,
+
+    pub avatar_url: Option<String>,
+}

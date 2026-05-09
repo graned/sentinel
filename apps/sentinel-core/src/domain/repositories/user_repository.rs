@@ -118,4 +118,31 @@ impl UserRepository {
             .await
             .map_err(RepositoryError::from)
     }
+
+    /// Update `first_name`, `last_name`, and/or `avatar_url` for a user.
+    /// Returns the updated row or `None` if the user doesn't exist.
+    pub async fn update_user_profile<'a>(
+        &self,
+        conn: &mut crate::DbConnection<'a>,
+        target_user_id: Uuid,
+        first_name: Option<String>,
+        last_name: Option<String>,
+        avatar_url: Option<String>,
+    ) -> Result<Option<User>, RepositoryError> {
+        use crate::schema::users::dsl::{avatar_url as avatar_col, first_name as fn_col, last_name as ln_col, user_id, users};
+        use diesel::prelude::*;
+        use diesel_async::RunQueryDsl;
+
+        diesel::update(users)
+            .filter(user_id.eq(target_user_id))
+            .set((
+                fn_col.eq::<Option<String>>(first_name),
+                ln_col.eq::<Option<String>>(last_name),
+                avatar_col.eq::<Option<String>>(avatar_url),
+            ))
+            .get_result::<User>(conn)
+            .await
+            .optional()
+            .map_err(RepositoryError::from)
+    }
 }

@@ -1,4 +1,4 @@
-//! User application — read-only profile and session management for the authenticated user.
+//! User application — profile and session management for the authenticated user.
 //!
 //! All methods operate on the current user (identified via `AuthenticatedUserContext`)
 //! and do not require admin privileges.
@@ -6,6 +6,7 @@
 //! # Methods
 //!
 //! - `get_profile` — fetch the user's email, name, and status from `user_identities`
+//! - `update_me` — update the user's first_name, last_name, and avatar_url
 //! - `get_sessions` — paginated list of all sessions (active and revoked)
 //! - `get_session` — details of a specific session including device/IP metadata
 //! - `get_permissions` — list the user's assigned roles
@@ -60,6 +61,51 @@ impl UserApplication {
         let user = self
             .user_service
             .find_user_by_id(&mut conn, ctx.user_id)
+            .await?
+            .ok_or_else(|| ServiceError::NotFoundError("User not found".to_string()))?;
+
+        let identity = self
+            .identity_service
+            .find_primary_identity_by_user_id(&mut conn, ctx.user_id)
+            .await?
+            .ok_or_else(|| ServiceError::NotFoundError("Identity not found".to_string()))?;
+
+        let mfa_enabled = self
+            .mfa_totp_service
+            .is_mfa_enabled(&mut conn, ctx.user_id)
+            .await?;
+
+        Ok(UserProfileResponse {
+            user_id: user.user_id,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            avatar_url: user.avatar_url,
+            status: user.status,
+            email: identity.email,
+            email_verified: identity.email_verified.unwrap_or(false),
+            mfa_enabled,
+            created_at: user.created_at,
+        })
+    }
+
+    pub async fn update_me(
+        &self,
+        ctx: AuthenticatedUserContext,
+        first_name: Option<String>,
+        last_name: Option<String>,
+        avatar_url: Option<String>,
+    ) -> Result<UserProfileResponse, ServiceError> {
+        let mut conn = self.pg_client.get_conn().await?;
+
+        let user = self
+            .user_service
+            .update_user_profile(
+                &mut conn,
+                ctx.user_id,
+                first_name,
+                last_name,
+                avatar_url,
+            )
             .await?
             .ok_or_else(|| ServiceError::NotFoundError("User not found".to_string()))?;
 
