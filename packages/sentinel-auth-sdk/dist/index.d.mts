@@ -913,6 +913,23 @@ declare class UserClient {
 }
 
 /**
+ * `SentinelAuthClient` — main entry point for the Sentinel Auth TypeScript SDK.
+ *
+ * Instantiate once and reuse across your application:
+ * ```ts
+ * const client = new SentinelAuthClient({ baseUrl: 'http://localhost:8080' });
+ * const result = await client.login({ email, password });
+ * ```
+ *
+ * Domain sub-clients are exposed as properties:
+ * - `client.user`      — profile, sessions, password change
+ * - `client.mfa`       — TOTP enrollment and MFA login verification
+ * - `client.apiTokens` — long-lived API token management (admin)
+ * - `client.admin`     — roles, policies, email templates (admin)
+ * - `client.system`    — health check, SMTP provider config (admin)
+ */
+
+/**
  * Main entry point for the Sentinel Auth SDK.
  *
  * ```ts
