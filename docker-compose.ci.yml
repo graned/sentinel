@@ -63,13 +63,21 @@ services:
       - ci-network
 
   # ── Test runner ───────────────────────────────────────────────────────────
-  # Uses the same pre-built production image as the application server.
-  # scripts/ci.sh test pulls SENTINEL_CORE_IMAGE before compose runs so no
-  # local image builds occur during the test step.
-  # APP_HOST points at the server container for integration test HTTP calls.
+  # Uses the Rust toolchain image with the workspace source mounted so that
+  # cargo test can compile and run integration tests. System libraries (libpq,
+  # libssl) are installed at startup since the slim image does not include them.
+  # The SENTINEL_CORE_IMAGE is not used here — it has no cargo binary.
   test-runner:
-    image: ${SENTINEL_CORE_IMAGE}
-    command: cargo test --workspace --locked
+    image: rust:1.91-slim
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: >
+      sh -c "
+        apt-get update -qq &&
+        apt-get install -y -qq --no-install-recommends libpq-dev libssl-dev pkg-config ca-certificates curl &&
+        cargo test --workspace --locked
+      "
     environment:
       - RUST_LOG=info
       - APP_HOST=sentinel-core
