@@ -99,13 +99,7 @@ impl UserApplication {
 
         let user = self
             .user_service
-            .update_user_profile(
-                &mut conn,
-                ctx.user_id,
-                first_name,
-                last_name,
-                avatar_url,
-            )
+            .update_user_profile(&mut conn, ctx.user_id, first_name, last_name, avatar_url)
             .await?
             .ok_or_else(|| ServiceError::NotFoundError("User not found".to_string()))?;
 

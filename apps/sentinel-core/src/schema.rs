@@ -332,4 +332,22 @@ diesel::joinable!(user_roles -> roles (role_id));
 diesel::joinable!(user_roles -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    api_tokens,auth_configs,email_templates,email_verifications,oidc_auth_codes,oidc_clients,oidc_signing_keys,password_reset_tokens,policies,policy_versions,provider_configurations,roles,sessions,user_identities,user_mfa_totp,user_recovery_codes,user_roles,users,);
+    api_tokens,
+    auth_configs,
+    email_templates,
+    email_verifications,
+    oidc_auth_codes,
+    oidc_clients,
+    oidc_signing_keys,
+    password_reset_tokens,
+    policies,
+    policy_versions,
+    provider_configurations,
+    roles,
+    sessions,
+    user_identities,
+    user_mfa_totp,
+    user_recovery_codes,
+    user_roles,
+    users,
+);

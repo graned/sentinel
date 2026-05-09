@@ -357,13 +357,35 @@ async fn update_profile_returns_full_user_profile_response() {
     let data = &body["data"];
 
     // Required fields in UserProfileResponse
-    assert!(data["user_id"].is_string(), "user_id must be a string: {body}");
-    assert_eq!(data["email"].as_str().unwrap_or(""), email, "email mismatch: {body}");
-    assert!(data["first_name"].is_string(), "first_name must be a string: {body}");
-    assert!(data["last_name"].is_string(), "last_name must be a string: {body}");
-    assert!(data["status"].is_string(), "status must be a string: {body}");
-    assert!(data["email_verified"].is_boolean(), "email_verified must be boolean: {body}");
-    assert!(data["mfa_enabled"].is_boolean(), "mfa_enabled must be boolean: {body}");
+    assert!(
+        data["user_id"].is_string(),
+        "user_id must be a string: {body}"
+    );
+    assert_eq!(
+        data["email"].as_str().unwrap_or(""),
+        email,
+        "email mismatch: {body}"
+    );
+    assert!(
+        data["first_name"].is_string(),
+        "first_name must be a string: {body}"
+    );
+    assert!(
+        data["last_name"].is_string(),
+        "last_name must be a string: {body}"
+    );
+    assert!(
+        data["status"].is_string(),
+        "status must be a string: {body}"
+    );
+    assert!(
+        data["email_verified"].is_boolean(),
+        "email_verified must be boolean: {body}"
+    );
+    assert!(
+        data["mfa_enabled"].is_boolean(),
+        "mfa_enabled must be boolean: {body}"
+    );
     // avatar_url is optional
     assert!(
         data["avatar_url"].is_string() || data["avatar_url"].is_null(),

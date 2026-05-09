@@ -129,7 +129,9 @@ impl UserRepository {
         last_name: Option<String>,
         avatar_url: Option<String>,
     ) -> Result<Option<User>, RepositoryError> {
-        use crate::schema::users::dsl::{avatar_url as avatar_col, first_name as fn_col, last_name as ln_col, user_id, users};
+        use crate::schema::users::dsl::{
+            avatar_url as avatar_col, first_name as fn_col, last_name as ln_col, user_id, users,
+        };
         use diesel::prelude::*;
         use diesel_async::RunQueryDsl;
 

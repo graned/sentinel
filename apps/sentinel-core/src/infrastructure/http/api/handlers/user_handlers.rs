@@ -15,8 +15,8 @@
 
 use crate::{
     http::api::dtos::{
-        AuthenticatedUserContext, UpdateProfileRequest, UserPermissionsResponse, UserProfileResponse,
-        UserSessionDetailResponse, UserSessionResponse,
+        AuthenticatedUserContext, UpdateProfileRequest, UserPermissionsResponse,
+        UserProfileResponse, UserSessionDetailResponse, UserSessionResponse,
     },
     http::api::RawResponse,
     http::server::AppState,
