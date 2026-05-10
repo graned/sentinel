@@ -83,14 +83,11 @@ var AdminClient = class {
    * `POST /v1/api/admin/sessions/revoke`
    */
   async revokeSessionsBulk(accessToken, body) {
-    const { data } = await this.req(
-      "/v1/api/admin/sessions/revoke",
-      {
-        method: "POST",
-        body: JSON.stringify(body),
-        headers: { Authorization: `Bearer ${accessToken}` }
-      }
-    );
+    const { data } = await this.req("/v1/api/admin/sessions/revoke", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
     return data;
   }
   // ---------------------------------------------------------------------------
@@ -189,10 +186,9 @@ var AdminClient = class {
    * `GET /v1/api/admin/users/{userId}/auth-info`
    */
   async getUserAuthInfo(accessToken, userId) {
-    const { data } = await this.req(
-      `/v1/api/admin/users/${userId}/auth-info`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
+    const { data } = await this.req(`/v1/api/admin/users/${userId}/auth-info`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
     return data;
   }
   // ---------------------------------------------------------------------------
@@ -256,10 +252,9 @@ var AdminClient = class {
    * `GET /v1/api/admin/policies/{policyId}/rules`
    */
   async getPolicyRules(accessToken, policyId) {
-    const { data } = await this.req(
-      `/v1/api/admin/policies/${policyId}/rules`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
+    const { data } = await this.req(`/v1/api/admin/policies/${policyId}/rules`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
     return data;
   }
   /**
@@ -273,14 +268,11 @@ var AdminClient = class {
    * `POST /v1/api/admin/policies/{policyId}/probe`
    */
   async runPolicyProbe(accessToken, policyId, body) {
-    const { data } = await this.req(
-      `/v1/api/admin/policies/${policyId}/probe`,
-      {
-        method: "POST",
-        body: JSON.stringify(body),
-        headers: { Authorization: `Bearer ${accessToken}` }
-      }
-    );
+    const { data } = await this.req(`/v1/api/admin/policies/${policyId}/probe`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
     return data;
   }
   // ---------------------------------------------------------------------------
@@ -339,10 +331,9 @@ var AdminClient = class {
     const qs = params ? "?" + new URLSearchParams(
       Object.entries(params).filter(([, v]) => v !== void 0).map(([k, v]) => [k, String(v)])
     ).toString() : "";
-    const { data } = await this.req(
-      `/v1/api/admin/users${qs}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
+    const { data } = await this.req(`/v1/api/admin/users${qs}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
     return data;
   }
   /**
@@ -403,10 +394,9 @@ var AdminClient = class {
    * `GET /v1/api/admin/users/{userId}/invite-link`
    */
   async getUserInviteLink(accessToken, userId) {
-    const { data } = await this.req(
-      `/v1/api/admin/users/${userId}/invite-link`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
+    const { data } = await this.req(`/v1/api/admin/users/${userId}/invite-link`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
     return data;
   }
   /**
@@ -772,17 +762,14 @@ var SystemClient = class {
    * `PUT /v1/api/system/config/email/:configId`
    */
   async updateProviderConfig(accessToken, configId, body) {
-    const { data } = await this.req(
-      `/v1/api/system/config/email/${configId}`,
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
-      }
-    );
+    const { data } = await this.req(`/v1/api/system/config/email/${configId}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
+    });
     return data;
   }
   /**
@@ -898,6 +885,20 @@ var UserClient = class {
     return data;
   }
   /**
+   * Update the authenticated user's profile fields.
+   * Only the provided fields are changed; omitted fields are left untouched.
+   *
+   * `PATCH /v1/api/user/me`
+   */
+  async updateProfile(accessToken, body) {
+    const { data } = await this.req("/v1/api/user/me", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return data;
+  }
+  /**
    * Change the authenticated user's password.
    * All existing sessions are revoked on success.
    *
@@ -927,10 +928,9 @@ var UserClient = class {
    * `GET /v1/api/user/sessions/{sessionId}`
    */
   async getSession(accessToken, sessionId) {
-    const { data } = await this.req(
-      `/v1/api/user/sessions/${sessionId}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
+    const { data } = await this.req(`/v1/api/user/sessions/${sessionId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
     return data;
   }
   /**
@@ -1014,7 +1014,12 @@ var SentinelAuthClient = class {
     }
     const session = this.toSession(data);
     this.cache.set(session.userId, session);
-    return { type: "session", session, mustChangePassword: data.must_change_password, mfaSetupRequired: data.mfa_setup_required ?? false };
+    return {
+      type: "session",
+      session,
+      mustChangePassword: data.must_change_password,
+      mfaSetupRequired: data.mfa_setup_required ?? false
+    };
   }
   /**
    * Log out the user, revoking only the current session.

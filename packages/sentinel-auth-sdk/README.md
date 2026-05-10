@@ -112,6 +112,7 @@ const profile  = await client.user.getMe(session.accessToken);
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `getMe(token)` | `GET /v1/api/user/me` | Fetch own profile |
+| `updateProfile(token, body)` | `PATCH /v1/api/user/me` | Update own name / avatar |
 | `changePassword(token, body)` | `POST /v1/api/user/password/change` | Change password; revokes all sessions |
 | `getSessions(token)` | `GET /v1/api/user/sessions` | List all sessions |
 | `getSession(token, sessionId)` | `GET /v1/api/user/sessions/{id}` | Get one session detail |

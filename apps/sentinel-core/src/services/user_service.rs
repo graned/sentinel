@@ -9,9 +9,23 @@
 //! never sees or stores plaintext passwords.
 
 use crate::{DbConnection, ServiceError, User, UserRepository, UserStatus};
+use diesel::OptionalExtension;
 
 use std::sync::Arc;
 use uuid::Uuid;
+
+/// Changeset for partial profile updates.
+///
+/// Each field uses `Option<Option<T>>`:
+/// - `None` → skip the column (leave existing value untouched)
+/// - `Some(Some(v))` → set the column to `v`
+#[derive(diesel::AsChangeset)]
+#[diesel(table_name = crate::schema::users)]
+struct UserProfileChangeset {
+    first_name: Option<Option<String>>,
+    last_name: Option<Option<String>>,
+    avatar_url: Option<Option<String>>,
+}
 
 /// Provides user-account CRUD operations to the application layer.
 pub struct UserService {
@@ -92,6 +106,40 @@ impl UserService {
         self.user_repository
             .update_mfa_required(conn, user_id, required)
             .await
+            .map_err(|e| ServiceError::DatabaseError(e.to_string()))
+    }
+
+    pub async fn update_user_profile(
+        &self,
+        conn: &mut DbConnection<'_>,
+        user_id: Uuid,
+        first_name: Option<String>,
+        last_name: Option<String>,
+        avatar_url: Option<String>,
+    ) -> Result<Option<User>, ServiceError> {
+        let changes = UserProfileChangeset {
+            first_name: first_name.map(Some),
+            last_name: last_name.map(Some),
+            avatar_url: avatar_url.map(Some),
+        };
+
+        // When no fields to update, just fetch the user.
+        // An empty AsChangeset generates invalid SQL (UPDATE ... SET WHERE).
+        if changes.first_name.is_none()
+            && changes.last_name.is_none()
+            && changes.avatar_url.is_none()
+        {
+            return self
+                .user_repository
+                .find_by_id(conn, user_id)
+                .await
+                .map_err(|e| ServiceError::DatabaseError(e.to_string()));
+        }
+
+        self.user_repository
+            .update(conn, user_id, changes)
+            .await
+            .optional()
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))
     }
 

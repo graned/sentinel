@@ -7,6 +7,7 @@
 //! | Method | Path | Description |
 //! |--------|------|-------------|
 //! | GET | `/user/me` | Return the current user's profile |
+//! | PATCH | `/user/me` | Update the current user's profile |
 //! | GET | `/user/sessions` | List all sessions (paginated) |
 //! | GET | `/user/sessions/{session_id}` | Get a specific session |
 //! | GET | `/user/permissions` | List the current user's roles/permissions |
@@ -14,9 +15,10 @@
 
 use crate::{
     http::api::dtos::{
-        AuthenticatedUserContext, UserPermissionsResponse, UserProfileResponse,
-        UserSessionDetailResponse, UserSessionResponse,
+        AuthenticatedUserContext, UpdateProfileRequest, UserPermissionsResponse,
+        UserProfileResponse, UserSessionDetailResponse, UserSessionResponse,
     },
+    http::api::routes::api_validation::ValidatedJson,
     http::api::RawResponse,
     http::server::AppState,
     ApiError,
@@ -42,6 +44,30 @@ pub async fn get_me(
     state
         .user_application
         .get_me(ctx)
+        .await
+        .map(RawResponse)
+        .map_err(ApiError::from)
+}
+
+#[utoipa::path(
+    patch,
+    path = "/v1/api/user/me",
+    request_body = UpdateProfileRequest,
+    responses(
+        (status = 200, description = "Updated user profile", body = UserProfileResponse),
+        (status = 401, description = "Missing or invalid token"),
+    ),
+    security(("BearerAuth" = [])),
+    tag = "user"
+)]
+pub async fn update_me(
+    Extension(state): Extension<Arc<AppState>>,
+    Extension(ctx): Extension<AuthenticatedUserContext>,
+    ValidatedJson(req): ValidatedJson<UpdateProfileRequest>,
+) -> Result<RawResponse<UserProfileResponse>, ApiError> {
+    state
+        .user_application
+        .update_me(ctx, req.first_name, req.last_name, req.avatar_url)
         .await
         .map(RawResponse)
         .map_err(ApiError::from)

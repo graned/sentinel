@@ -234,7 +234,7 @@ fn build_auth_routes() -> Router {
 
 fn build_user_routes() -> Router {
     let auth_only = Router::new()
-        .route("/me", get(get_me))
+        .route("/me", get(get_me).patch(update_me))
         .route("/password/change", post(change_password))
         .route("/sessions", get(get_user_sessions))
         .route("/sessions/{session_id}", get(get_user_session))

@@ -1,9 +1,4 @@
-import type {
-  ApiTokenData,
-  CreateApiTokenData,
-  CreateApiTokenRequest,
-  RequestFn,
-} from './types';
+import type { ApiTokenData, CreateApiTokenData, CreateApiTokenRequest, RequestFn } from './types';
 
 /**
  * Long-lived API token management. All methods require a Bearer token from an

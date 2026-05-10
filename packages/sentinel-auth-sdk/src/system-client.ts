@@ -73,17 +73,14 @@ export class SystemClient {
     configId: string,
     body: UpdateProviderConfigRequest,
   ): Promise<ProviderConfigData> {
-    const { data } = await this.req<ProviderConfigData>(
-      `/v1/api/system/config/email/${configId}`,
-      {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
+    const { data } = await this.req<ProviderConfigData>(`/v1/api/system/config/email/${configId}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify(body),
+    });
     return data;
   }
 
@@ -120,10 +117,7 @@ export class SystemClient {
    *
    * `POST /v1/api/system/config/email/:configId/test`
    */
-  async testProviderConfig(
-    accessToken: string,
-    configId: string,
-  ): Promise<TestProviderConfigData> {
+  async testProviderConfig(accessToken: string, configId: string): Promise<TestProviderConfigData> {
     const { data } = await this.req<TestProviderConfigData>(
       `/v1/api/system/config/email/${configId}/test`,
       {

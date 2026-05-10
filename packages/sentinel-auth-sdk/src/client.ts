@@ -19,14 +19,13 @@ import { ApiTokenClient } from './api-token-client';
 import {
   ForbiddenError,
   NetworkError,
-  SessionNotFoundError,
   SentinelError,
+  SessionNotFoundError,
   createErrorFromCode,
 } from './errors';
 import { MfaClient } from './mfa-client';
 import { SessionCache } from './session';
 import { SystemClient } from './system-client';
-import { UserClient } from './user-client';
 import type {
   ApiEnvelope,
   AuthContextData,
@@ -34,9 +33,9 @@ import type {
   AuthenticateAndAuthorizeData,
   AuthenticateAndAuthorizeRequest,
   AuthenticateRequest,
+  BasicLoginData,
   BatchCheckData,
   BatchCheckRequest,
-  BasicLoginData,
   CheckAuthorizationData,
   CheckAuthorizationRequest,
   ForgotPasswordRequest,
@@ -52,6 +51,7 @@ import type {
   SentinelConfig,
   Session,
 } from './types';
+import { UserClient } from './user-client';
 
 const DEFAULT_REFRESH_BUFFER_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -163,7 +163,12 @@ export class SentinelAuthClient {
 
     const session = this.toSession(data);
     this.cache.set(session.userId, session);
-    return { type: 'session', session, mustChangePassword: data.must_change_password, mfaSetupRequired: data.mfa_setup_required ?? false };
+    return {
+      type: 'session',
+      session,
+      mustChangePassword: data.must_change_password,
+      mfaSetupRequired: data.mfa_setup_required ?? false,
+    };
   }
 
   /**

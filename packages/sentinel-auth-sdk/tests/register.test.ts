@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { describe, it } from 'mocha';
 import { SentinelAuthClient, ValidationError } from '../src/index';
-import { API_BASE, TEST_PASSWORD, uniqueEmail, uniqueIp } from './helpers';
+import { API_BASE, TEST_PASSWORD, registerAndVerify, uniqueEmail, uniqueIp } from './helpers';
 
 function makeClient(): SentinelAuthClient {
   return new SentinelAuthClient({
@@ -81,7 +81,7 @@ describe('SentinelAuthClient.register() (integration)', () => {
       expect(result.user_id).to.be.a('string').and.not.empty;
       expect(result.first_name).to.equal('Alice');
       expect(result.last_name).to.equal('Smith');
-      expect(result.status).to.equal('PendingVerification');
+      expect(result.status).to.equal('pending_verification');
     });
 
     it('accepts an optional avatar_url', async () => {
@@ -119,7 +119,6 @@ describe('SentinelAuthClient.authenticate() (integration)', () => {
     const email = uniqueEmail('authenticate');
 
     // Register and verify, then login to get a token
-    const { registerAndVerify } = await import('./helpers');
     await registerAndVerify(email);
     const loginResult = await client.login({ email, password: TEST_PASSWORD });
     if (loginResult.type !== 'session') return expect.fail('expected session');
@@ -160,7 +159,6 @@ describe('SentinelAuthClient.logoutAll() (integration)', () => {
     const client = makeClient();
     const email = uniqueEmail('logoutall');
 
-    const { registerAndVerify } = await import('./helpers');
     await registerAndVerify(email);
 
     const loginResult = await client.login({ email, password: TEST_PASSWORD });
