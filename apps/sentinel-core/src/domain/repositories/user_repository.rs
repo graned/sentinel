@@ -120,6 +120,7 @@ impl UserRepository {
     }
 
     /// Update `first_name`, `last_name`, and/or `avatar_url` for a user.
+    /// Only the provided (Some) fields are updated; None fields are skipped.
     /// Returns the updated row or `None` if the user doesn't exist.
     pub async fn update_user_profile<'a>(
         &self,
@@ -135,16 +136,46 @@ impl UserRepository {
         use diesel::prelude::*;
         use diesel_async::RunQueryDsl;
 
-        diesel::update(users)
-            .filter(user_id.eq(target_user_id))
-            .set((
-                fn_col.eq::<Option<String>>(first_name),
-                ln_col.eq::<Option<String>>(last_name),
-                avatar_col.eq::<Option<String>>(avatar_url),
-            ))
-            .get_result::<User>(conn)
-            .await
-            .optional()
-            .map_err(RepositoryError::from)
+        let target = users.filter(user_id.eq(target_user_id));
+        let query = diesel::update(target);
+
+        let result = match (first_name, last_name, avatar_url) {
+            (Some(f), Some(l), Some(a)) => {
+                query
+                    .set((fn_col.eq(f), ln_col.eq(l), avatar_col.eq(a)))
+                    .get_result::<User>(conn)
+                    .await
+            }
+            (Some(f), Some(l), None) => {
+                query
+                    .set((fn_col.eq(f), ln_col.eq(l)))
+                    .get_result::<User>(conn)
+                    .await
+            }
+            (Some(f), None, Some(a)) => {
+                query
+                    .set((fn_col.eq(f), avatar_col.eq(a)))
+                    .get_result::<User>(conn)
+                    .await
+            }
+            (None, Some(l), Some(a)) => {
+                query
+                    .set((ln_col.eq(l), avatar_col.eq(a)))
+                    .get_result::<User>(conn)
+                    .await
+            }
+            (Some(f), None, None) => query.set(fn_col.eq(f)).get_result::<User>(conn).await,
+            (None, Some(l), None) => query.set(ln_col.eq(l)).get_result::<User>(conn).await,
+            (None, None, Some(a)) => query.set(avatar_col.eq(a)).get_result::<User>(conn).await,
+            (None, None, None) => {
+                use diesel_async::RunQueryDsl;
+                users
+                    .filter(user_id.eq(target_user_id))
+                    .first::<User>(conn)
+                    .await
+            }
+        };
+
+        result.optional().map_err(RepositoryError::from)
     }
 }

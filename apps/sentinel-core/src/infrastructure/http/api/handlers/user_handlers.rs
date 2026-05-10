@@ -18,11 +18,12 @@ use crate::{
         AuthenticatedUserContext, UpdateProfileRequest, UserPermissionsResponse,
         UserProfileResponse, UserSessionDetailResponse, UserSessionResponse,
     },
+    http::api::routes::api_validation::ValidatedJson,
     http::api::RawResponse,
     http::server::AppState,
     ApiError,
 };
-use axum::{extract::Path, Extension, Json};
+use axum::{extract::Path, Extension};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -62,7 +63,7 @@ pub async fn get_me(
 pub async fn update_me(
     Extension(state): Extension<Arc<AppState>>,
     Extension(ctx): Extension<AuthenticatedUserContext>,
-    Json(req): Json<UpdateProfileRequest>,
+    ValidatedJson(req): ValidatedJson<UpdateProfileRequest>,
 ) -> Result<RawResponse<UserProfileResponse>, ApiError> {
     state
         .user_application
