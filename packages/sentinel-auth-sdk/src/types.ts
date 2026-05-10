@@ -439,9 +439,8 @@ export interface EmailTemplateData {
   updated_at: string | null;
 }
 
-export interface HealthData {
-  status: string;
-}
+/** Server health — returns a plain status string. */
+export type HealthData = string;
 
 export interface ProviderConfigData {
   configuration_id: string;

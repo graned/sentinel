@@ -148,6 +148,6 @@ describe('client.system.health() (integration)', () => {
   it('returns a status string', async () => {
     const client = makeClient();
     const health = await client.system.health();
-    expect(health.status).to.be.a('string');
+    expect(health).to.be.a('string');
   });
 });

@@ -359,9 +359,8 @@ interface EmailTemplateData {
     created_at: string;
     updated_at: string | null;
 }
-interface HealthData {
-    status: string;
-}
+/** Server health — returns a plain status string. */
+type HealthData = string;
 interface ProviderConfigData {
     configuration_id: string;
     tenant_id: string | null;
