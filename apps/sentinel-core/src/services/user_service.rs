@@ -123,6 +123,19 @@ impl UserService {
             avatar_url: avatar_url.map(Some),
         };
 
+        // When no fields to update, just fetch the user.
+        // An empty AsChangeset generates invalid SQL (UPDATE ... SET WHERE).
+        if changes.first_name.is_none()
+            && changes.last_name.is_none()
+            && changes.avatar_url.is_none()
+        {
+            return self
+                .user_repository
+                .find_by_id(conn, user_id)
+                .await
+                .map_err(|e| ServiceError::DatabaseError(e.to_string()));
+        }
+
         self.user_repository
             .update(conn, user_id, changes)
             .await
