@@ -59,6 +59,7 @@ export type {
   UpdatePolicyRulesRequest,
   CreateEmailTemplateRequest,
   UpdateEmailTemplateRequest,
+  UpdateProfileRequest,
   CreateProviderConfigRequest,
   UpdateProviderConfigRequest,
   RunProbeRequest,

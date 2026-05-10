@@ -18,7 +18,7 @@
     "typecheck": "tsc --noEmit",
     "dev": "tsup --watch",
     "test": "mocha",
-    "test:unit": "mocha tests/session.test.ts",
+    "test:unit": "mocha tests/session.test.ts tests/user-client.test.ts",
     "test:integration": "mocha tests/login.test.ts tests/register.test.ts tests/user.test.ts",
     "lint": "biome lint ./src ./tests",
     "format": "biome format --write ./src ./tests",

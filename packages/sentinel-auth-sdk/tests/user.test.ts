@@ -2,13 +2,7 @@ import { expect } from 'chai';
 import { before, describe, it } from 'mocha';
 import { SentinelAuthClient, ValidationError } from '../src/index';
 import type { Session } from '../src/index';
-import {
-  API_BASE,
-  TEST_PASSWORD,
-  registerAndVerify,
-  uniqueEmail,
-  uniqueIp,
-} from './helpers';
+import { API_BASE, TEST_PASSWORD, registerAndVerify, uniqueEmail, uniqueIp } from './helpers';
 
 function makeClient(): SentinelAuthClient {
   return new SentinelAuthClient({

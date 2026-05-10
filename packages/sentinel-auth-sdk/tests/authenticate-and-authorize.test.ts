@@ -6,13 +6,7 @@ import {
   InvalidTokenError,
   SentinelAuthClient,
 } from '../src/index';
-import {
-  API_BASE,
-  TEST_PASSWORD,
-  registerAndVerify,
-  uniqueEmail,
-  uniqueIp,
-} from './helpers';
+import { API_BASE, TEST_PASSWORD, registerAndVerify, uniqueEmail, uniqueIp } from './helpers';
 
 function makeClient(): SentinelAuthClient {
   return new SentinelAuthClient({

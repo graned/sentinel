@@ -849,6 +849,20 @@ var UserClient = class {
     return data;
   }
   /**
+   * Update the authenticated user's profile fields.
+   * Only the provided fields are changed; omitted fields are left untouched.
+   *
+   * `PATCH /v1/api/user/me`
+   */
+  async updateProfile(accessToken, body) {
+    const { data } = await this.req("/v1/api/user/me", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return data;
+  }
+  /**
    * Change the authenticated user's password.
    * All existing sessions are revoked on success.
    *

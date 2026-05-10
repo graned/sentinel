@@ -44,6 +44,15 @@ export interface ChangePasswordRequest {
   new_password: string;
 }
 
+export interface UpdateProfileRequest {
+  /** New first name (1–100 chars when provided). */
+  first_name?: string;
+  /** New last name (1–100 chars when provided). */
+  last_name?: string;
+  /** New avatar URL. */
+  avatar_url?: string;
+}
+
 export interface CheckAuthorizationRequest {
   policy_id?: string;
   method: string;

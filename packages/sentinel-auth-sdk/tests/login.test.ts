@@ -1,17 +1,7 @@
 import { expect } from 'chai';
 import { before, describe, it } from 'mocha';
-import {
-  AuthenticationError,
-  SentinelAuthClient,
-  ValidationError,
-} from '../src/index';
-import {
-  API_BASE,
-  TEST_PASSWORD,
-  registerAndVerify,
-  uniqueEmail,
-  uniqueIp,
-} from './helpers';
+import { AuthenticationError, SentinelAuthClient, ValidationError } from '../src/index';
+import { API_BASE, TEST_PASSWORD, registerAndVerify, uniqueEmail, uniqueIp } from './helpers';
 
 // ---------------------------------------------------------------------------
 // Each test gets its own SentinelAuthClient with a unique X-Forwarded-For so

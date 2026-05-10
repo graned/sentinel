@@ -1,6 +1,7 @@
 import type {
   ChangePasswordRequest,
   RequestFn,
+  UpdateProfileRequest,
   UserPermissionsData,
   UserProfileData,
   UserSessionData,
@@ -26,6 +27,21 @@ export class UserClient {
    */
   async getMe(accessToken: string): Promise<UserProfileData> {
     const { data } = await this.req<UserProfileData>('/v1/api/user/me', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    return data;
+  }
+
+  /**
+   * Update the authenticated user's profile fields.
+   * Only the provided fields are changed; omitted fields are left untouched.
+   *
+   * `PATCH /v1/api/user/me`
+   */
+  async updateProfile(accessToken: string, body: UpdateProfileRequest): Promise<UserProfileData> {
+    const { data } = await this.req<UserProfileData>('/v1/api/user/me', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     return data;
@@ -63,10 +79,9 @@ export class UserClient {
    * `GET /v1/api/user/sessions/{sessionId}`
    */
   async getSession(accessToken: string, sessionId: string): Promise<UserSessionDetailData> {
-    const { data } = await this.req<UserSessionDetailData>(
-      `/v1/api/user/sessions/${sessionId}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
+    const { data } = await this.req<UserSessionDetailData>(`/v1/api/user/sessions/${sessionId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     return data;
   }
 

@@ -1,31 +1,31 @@
 import type {
   AdminCreateUserRequest,
   AdminSessionData,
+  AdminSetMfaRequiredRequest,
   AdminUserData,
+  AssignRoleRequest,
   BulkRevokeSessionsRequest,
   BulkRevokeSessionsResponse,
-  InviteLinkData,
-  PaginatedAdminUsersResponse,
-  AssignRoleRequest,
   CreateEmailTemplateRequest,
   CreatePolicyData,
   CreatePolicyRequest,
-  PolicyData,
-  PolicyRulesData,
   CreateRoleRequest,
   EmailTemplateData,
+  InviteLinkData,
+  PaginatedAdminUsersResponse,
+  PolicyData,
+  PolicyRulesData,
   RequestFn,
   RoleData,
   RunProbeData,
   RunProbeRequest,
   UpdateEmailTemplateRequest,
-  UpdateUserStatusRequest,
   UpdatePolicyRulesData,
   UpdatePolicyRulesRequest,
   UpdateRoleRequest,
-  AdminSetMfaRequiredRequest,
-  UserMfaStatusData,
+  UpdateUserStatusRequest,
   UserAuthInfoData,
+  UserMfaStatusData,
   UserPermissionsData,
 } from './types';
 
@@ -81,14 +81,11 @@ export class AdminClient {
     accessToken: string,
     body: BulkRevokeSessionsRequest,
   ): Promise<BulkRevokeSessionsResponse> {
-    const { data } = await this.req<BulkRevokeSessionsResponse>(
-      '/v1/api/admin/sessions/revoke',
-      {
-        method: 'POST',
-        body: JSON.stringify(body),
-        headers: { Authorization: `Bearer ${accessToken}` },
-      },
-    );
+    const { data } = await this.req<BulkRevokeSessionsResponse>('/v1/api/admin/sessions/revoke', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     return data;
   }
 
@@ -128,7 +125,11 @@ export class AdminClient {
    *
    * `PUT /v1/api/admin/roles/{roleId}`
    */
-  async updateRole(accessToken: string, roleId: string, body: UpdateRoleRequest): Promise<RoleData> {
+  async updateRole(
+    accessToken: string,
+    roleId: string,
+    body: UpdateRoleRequest,
+  ): Promise<RoleData> {
     const { data } = await this.req<RoleData>(`/v1/api/admin/roles/${roleId}`, {
       method: 'PUT',
       body: JSON.stringify(body),
@@ -197,10 +198,9 @@ export class AdminClient {
    * `GET /v1/api/admin/users/{userId}/auth-info`
    */
   async getUserAuthInfo(accessToken: string, userId: string): Promise<UserAuthInfoData> {
-    const { data } = await this.req<UserAuthInfoData>(
-      `/v1/api/admin/users/${userId}/auth-info`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
+    const { data } = await this.req<UserAuthInfoData>(`/v1/api/admin/users/${userId}/auth-info`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     return data;
   }
 
@@ -274,10 +274,9 @@ export class AdminClient {
    * `GET /v1/api/admin/policies/{policyId}/rules`
    */
   async getPolicyRules(accessToken: string, policyId: string): Promise<PolicyRulesData> {
-    const { data } = await this.req<PolicyRulesData>(
-      `/v1/api/admin/policies/${policyId}/rules`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
+    const { data } = await this.req<PolicyRulesData>(`/v1/api/admin/policies/${policyId}/rules`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     return data;
   }
 
@@ -296,14 +295,11 @@ export class AdminClient {
     policyId: string,
     body: RunProbeRequest,
   ): Promise<RunProbeData> {
-    const { data } = await this.req<RunProbeData>(
-      `/v1/api/admin/policies/${policyId}/probe`,
-      {
-        method: 'POST',
-        body: JSON.stringify(body),
-        headers: { Authorization: `Bearer ${accessToken}` },
-      },
-    );
+    const { data } = await this.req<RunProbeData>(`/v1/api/admin/policies/${policyId}/probe`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     return data;
   }
 
@@ -376,16 +372,16 @@ export class AdminClient {
     params?: { page?: number; page_size?: number },
   ): Promise<PaginatedAdminUsersResponse> {
     const qs = params
-      ? '?' + new URLSearchParams(
+      ? '?' +
+        new URLSearchParams(
           Object.entries(params)
             .filter(([, v]) => v !== undefined)
             .map(([k, v]) => [k, String(v)]),
         ).toString()
       : '';
-    const { data } = await this.req<PaginatedAdminUsersResponse>(
-      `/v1/api/admin/users${qs}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
+    const { data } = await this.req<PaginatedAdminUsersResponse>(`/v1/api/admin/users${qs}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     return data;
   }
 
@@ -455,10 +451,9 @@ export class AdminClient {
    * `GET /v1/api/admin/users/{userId}/invite-link`
    */
   async getUserInviteLink(accessToken: string, userId: string): Promise<InviteLinkData> {
-    const { data } = await this.req<InviteLinkData>(
-      `/v1/api/admin/users/${userId}/invite-link`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
+    const { data } = await this.req<InviteLinkData>(`/v1/api/admin/users/${userId}/invite-link`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     return data;
   }
 

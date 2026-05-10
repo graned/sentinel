@@ -2,13 +2,7 @@ import { expect } from 'chai';
 import { before, describe, it } from 'mocha';
 import { SentinelAuthClient, SentinelError } from '../src/index';
 import type { Session } from '../src/index';
-import {
-  API_BASE,
-  TEST_PASSWORD,
-  registerAndVerify,
-  uniqueEmail,
-  uniqueIp,
-} from './helpers';
+import { API_BASE, TEST_PASSWORD, registerAndVerify, uniqueEmail, uniqueIp } from './helpers';
 
 function makeClient(): SentinelAuthClient {
   return new SentinelAuthClient({
@@ -103,10 +97,7 @@ describe('client.admin.revokeSession() — non-admin user', () => {
 
   it('throws a SentinelError (403 FORBIDDEN) for a regular user', async () => {
     try {
-      await client.admin.revokeSession(
-        session.accessToken,
-        '00000000-0000-0000-0000-000000000000',
-      );
+      await client.admin.revokeSession(session.accessToken, '00000000-0000-0000-0000-000000000000');
       expect.fail('expected error to be thrown');
     } catch (err) {
       expect(err).to.be.instanceOf(SentinelError);

@@ -32,6 +32,14 @@ interface ChangePasswordRequest {
     /** Must be ≥12 chars with upper, lower, digit, and special character. */
     new_password: string;
 }
+interface UpdateProfileRequest {
+    /** New first name (1–100 chars when provided). */
+    first_name?: string;
+    /** New last name (1–100 chars when provided). */
+    last_name?: string;
+    /** New avatar URL. */
+    avatar_url?: string;
+}
 interface CheckAuthorizationRequest {
     policy_id?: string;
     method: string;
@@ -886,6 +894,13 @@ declare class UserClient {
      */
     getMe(accessToken: string): Promise<UserProfileData>;
     /**
+     * Update the authenticated user's profile fields.
+     * Only the provided fields are changed; omitted fields are left untouched.
+     *
+     * `PATCH /v1/api/user/me`
+     */
+    updateProfile(accessToken: string, body: UpdateProfileRequest): Promise<UserProfileData>;
+    /**
      * Change the authenticated user's password.
      * All existing sessions are revoked on success.
      *
@@ -1308,4 +1323,4 @@ interface SentinelMiddlewareOptions {
  */
 declare function sentinelExpressMiddleware(options: SentinelMiddlewareOptions): RequestHandler;
 
-export { AdminClient, type AdminCreateUserRequest, type AdminSessionData, type AdminSetMfaRequiredRequest, type AdminUserData, type ApiEnvelope, type ApiErrorBody, ApiTokenClient, type ApiTokenData, ApiTokenNotFoundError, type AssignRoleRequest, type AuthContextData, type AuthMethodsData, type AuthenticateAndAuthorizeData, type AuthenticateAndAuthorizeRequest, type AuthenticateRequest, AuthenticationError, type BasicLoginData, type BatchCheckData, type BatchCheckItem, type BatchCheckRequest, type BatchCheckResult, type BulkRevokeSessionsRequest, type BulkRevokeSessionsResponse, type ChangePasswordRequest, type CheckAuthorizationData, type CheckAuthorizationRequest, type CreateApiTokenData, type CreateApiTokenRequest, type CreateEmailTemplateRequest, type CreatePolicyData, type CreatePolicyRequest, type CreateProviderConfigRequest, type CreateRoleRequest, type DecryptedProviderConfigData, EmailNotVerifiedError, type EmailTemplateData, type EmailTemplateType, ExpiredTokenError, ForbiddenError, type ForgotPasswordRequest, type HealthData, type InsightsSummaryData, InternalServerError, InvalidTokenError, type InviteLinkData, type LoginData, type LoginRequest, type LoginResult, MfaAttemptLimitError, type MfaChallengeData, MfaClient, MfaInvalidCodeError, type MfaTotpConfirmData, type MfaTotpConfirmRequest, type MfaTotpStartData, type MfaVerifyRequest, MissingTokenError, NetworkError, type OidcClientInfo, type PaginatedAdminUsersResponse, type PolicyData, type PolicyRule, type PolicyRulesData, type ProbeRuleResult, type ProviderConfigData, RateLimitError, type RefreshTokenRequest, type RegisterData, type RegisterRequest, type RequestFn, type ResendVerificationRequest, type ResetPasswordRequest, type RoleData, type RunProbeData, type RunProbeRequest, type SendTestEmailRequest, SentinelAuthClient, type SentinelConfig, SentinelError, type SentinelMiddlewareOptions, type Session, type SessionActivityPoint, SessionCache, SessionNotFoundError, SystemClient, type TestProviderConfigData, type UpdateEmailTemplateRequest, type UpdatePolicyRulesData, type UpdatePolicyRulesRequest, type UpdateProviderConfigRequest, type UpdateRoleRequest, type UpdateUserStatusRequest, type UserAuthInfoData, UserClient, type UserGrowthPoint, type UserMfaStatusData, type UserPermissionsData, type UserProfileData, type UserSessionData, type UserSessionDetailData, ValidationError, createErrorFromCode, sentinelExpressMiddleware };
+export { AdminClient, type AdminCreateUserRequest, type AdminSessionData, type AdminSetMfaRequiredRequest, type AdminUserData, type ApiEnvelope, type ApiErrorBody, ApiTokenClient, type ApiTokenData, ApiTokenNotFoundError, type AssignRoleRequest, type AuthContextData, type AuthMethodsData, type AuthenticateAndAuthorizeData, type AuthenticateAndAuthorizeRequest, type AuthenticateRequest, AuthenticationError, type BasicLoginData, type BatchCheckData, type BatchCheckItem, type BatchCheckRequest, type BatchCheckResult, type BulkRevokeSessionsRequest, type BulkRevokeSessionsResponse, type ChangePasswordRequest, type CheckAuthorizationData, type CheckAuthorizationRequest, type CreateApiTokenData, type CreateApiTokenRequest, type CreateEmailTemplateRequest, type CreatePolicyData, type CreatePolicyRequest, type CreateProviderConfigRequest, type CreateRoleRequest, type DecryptedProviderConfigData, EmailNotVerifiedError, type EmailTemplateData, type EmailTemplateType, ExpiredTokenError, ForbiddenError, type ForgotPasswordRequest, type HealthData, type InsightsSummaryData, InternalServerError, InvalidTokenError, type InviteLinkData, type LoginData, type LoginRequest, type LoginResult, MfaAttemptLimitError, type MfaChallengeData, MfaClient, MfaInvalidCodeError, type MfaTotpConfirmData, type MfaTotpConfirmRequest, type MfaTotpStartData, type MfaVerifyRequest, MissingTokenError, NetworkError, type OidcClientInfo, type PaginatedAdminUsersResponse, type PolicyData, type PolicyRule, type PolicyRulesData, type ProbeRuleResult, type ProviderConfigData, RateLimitError, type RefreshTokenRequest, type RegisterData, type RegisterRequest, type RequestFn, type ResendVerificationRequest, type ResetPasswordRequest, type RoleData, type RunProbeData, type RunProbeRequest, type SendTestEmailRequest, SentinelAuthClient, type SentinelConfig, SentinelError, type SentinelMiddlewareOptions, type Session, type SessionActivityPoint, SessionCache, SessionNotFoundError, SystemClient, type TestProviderConfigData, type UpdateEmailTemplateRequest, type UpdatePolicyRulesData, type UpdatePolicyRulesRequest, type UpdateProfileRequest, type UpdateProviderConfigRequest, type UpdateRoleRequest, type UpdateUserStatusRequest, type UserAuthInfoData, UserClient, type UserGrowthPoint, type UserMfaStatusData, type UserPermissionsData, type UserProfileData, type UserSessionData, type UserSessionDetailData, ValidationError, createErrorFromCode, sentinelExpressMiddleware };

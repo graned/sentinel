@@ -1,11 +1,6 @@
 import { expect } from 'chai';
 import { describe, it } from 'mocha';
-import {
-  ExpiredTokenError,
-  ForbiddenError,
-  MissingTokenError,
-  SentinelAuthClient,
-} from '../src/index';
+import { ForbiddenError, MissingTokenError, SentinelAuthClient } from '../src/index';
 import { API_BASE, TEST_PASSWORD, registerAndVerify, uniqueEmail, uniqueIp } from './helpers';
 
 // ---------------------------------------------------------------------------
