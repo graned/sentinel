@@ -9,9 +9,23 @@
 //! never sees or stores plaintext passwords.
 
 use crate::{DbConnection, ServiceError, User, UserRepository, UserStatus};
+use diesel::OptionalExtension;
 
 use std::sync::Arc;
 use uuid::Uuid;
+
+/// Changeset for partial profile updates.
+///
+/// Each field uses `Option<Option<T>>`:
+/// - `None` → skip the column (leave existing value untouched)
+/// - `Some(Some(v))` → set the column to `v`
+#[derive(diesel::AsChangeset)]
+#[diesel(table_name = crate::schema::users)]
+struct UserProfileChangeset {
+    first_name: Option<Option<String>>,
+    last_name: Option<Option<String>>,
+    avatar_url: Option<Option<String>>,
+}
 
 /// Provides user-account CRUD operations to the application layer.
 pub struct UserService {
@@ -103,9 +117,16 @@ impl UserService {
         last_name: Option<String>,
         avatar_url: Option<String>,
     ) -> Result<Option<User>, ServiceError> {
+        let changes = UserProfileChangeset {
+            first_name: first_name.map(Some),
+            last_name: last_name.map(Some),
+            avatar_url: avatar_url.map(Some),
+        };
+
         self.user_repository
-            .update_user_profile(conn, user_id, first_name, last_name, avatar_url)
+            .update(conn, user_id, changes)
             .await
+            .optional()
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))
     }
 
