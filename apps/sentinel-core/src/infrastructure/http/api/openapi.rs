@@ -24,7 +24,7 @@ use crate::{
         CreateApiTokenRequest, CreateApiTokenResponse, CreateEmailTemplateRequest,
         CreateOidcClientRequest, CreateOidcClientResponse, CreatePolicyRequest,
         CreatePolicyResponse, CreateProviderConfigRequest, CreateRoleRequest,
-        DecryptedProviderConfigResponse, EmailTemplateResponse, ForgotPasswordRequest,
+        DecryptedProviderConfigResponse, EmailTemplateResponse, ExchangeApiTokenRequest, ForgotPasswordRequest,
         GenerateKeyResponse, GetPolicyRulesResponse, InsightsSummaryResponse, InviteLinkResponse,
         LoginOutcome, MfaChallengeResponse, OidcClientInfo, PaginatedUsersResponse, PolicyResponse,
         PolicyRule, ProbeResult, ProviderConfigResponse, RefreshTokenRequest, RegisterUserRequest,
