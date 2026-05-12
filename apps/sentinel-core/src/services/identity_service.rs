@@ -185,14 +185,15 @@ impl IdentityService {
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))
     }
 
-    pub async fn find_identity_by_email<'a>(
+    pub async fn find_identity_by_email(
         &self,
-        conn: &mut DbConnection<'a>,
-        target_email: &'a str,
+        conn: &mut DbConnection<'_>,
+        target_email: &str,
     ) -> Result<Option<UserIdentity>, ServiceError> {
+        let email_value = target_email.to_string();
         let results = self
             .identity_repository
-            .find_where(conn, email.eq(target_email))
+            .find_where(conn, email.eq(email_value))
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
         Ok(results.into_iter().next())

@@ -134,6 +134,14 @@ pub fn get_api_token_url(token_id: uuid::Uuid) -> String {
     format!("{server_url}/v1/api/auth/api-tokens/{token_id}")
 }
 
+// ── API Token Exchange URL ─────────────────────────────────────────────────
+
+#[allow(dead_code)]
+pub fn get_api_token_exchange_url() -> String {
+    let server_url = get_server_url();
+    format!("{server_url}/v1/api/auth/token/exchange")
+}
+
 // ── Password URLs ──────────────────────────────────────────────────────────
 
 #[allow(dead_code)]

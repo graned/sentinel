@@ -71,6 +71,14 @@ pub struct ResendVerificationRequest {
     pub email: String,
 }
 
+//************* API Token Exchange DTOs *************
+#[derive(Debug, Deserialize, Validate, utoipa::ToSchema)]
+pub struct ExchangeApiTokenRequest {
+    /// Email of the target user to create a session for.
+    #[validate(email)]
+    pub email: String,
+}
+
 //************* Verify email DTOs *************
 /// Query parameters for the verify-email endpoint.
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
