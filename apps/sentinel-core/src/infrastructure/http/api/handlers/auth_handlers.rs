@@ -31,10 +31,10 @@ use crate::{
         AuthContextResponse, AuthMethodsResponse, AuthenticateRequest, AuthenticatedUserContext,
         BasicAuthLoginRequest, BasicLoginResponse, BatchCheckRequest, BatchCheckResponse,
         CheckAuthorizationRequest, CheckAuthorizationResponse, CreatePolicyRequest,
-        CreatePolicyResponse, GetPolicyRulesResponse, LoginOutcome, PolicyResponse,
-        RefreshTokenRequest, RegisterUserRequest, RegisterUserResponse, ResendVerificationRequest,
-        RunProbeRequest, RunProbeResponse, UpdatePolicyRulesRequest, UpdatePolicyRulesResponse,
-        VerifyEmailQuery,
+        CreatePolicyResponse, ExchangeApiTokenRequest, GetPolicyRulesResponse, LoginOutcome,
+        PolicyResponse, RefreshTokenRequest, RegisterUserRequest, RegisterUserResponse,
+        ResendVerificationRequest, RunProbeRequest, RunProbeResponse, UpdatePolicyRulesRequest,
+        UpdatePolicyRulesResponse, VerifyEmailQuery,
     },
     http::api::routes::api_validation::{ValidatedBearer, ValidatedJson},
     http::api::RawResponse,
@@ -403,6 +403,39 @@ pub async fn resend_verification(
         .resend_verification(req.email)
         .await
         .map(|_| RawResponse("Verification email sent".to_string()))
+        .map_err(ApiError::from)
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/api/auth/token/exchange",
+    request_body = ExchangeApiTokenRequest,
+    responses(
+        (status = 200, description = "API token exchanged for session tokens", body = BasicLoginResponse),
+        (status = 400, description = "Validation error"),
+        (status = 401, description = "Invalid or expired API token"),
+    ),
+    tag = "auth"
+)]
+pub async fn exchange_api_token(
+    Extension(state): Extension<Arc<AppState>>,
+    ValidatedBearer(token): ValidatedBearer,
+    ValidatedJson(request): ValidatedJson<ExchangeApiTokenRequest>,
+) -> Result<RawResponse<BasicLoginResponse>, ApiError> {
+    if !token.starts_with("sat_") {
+        return Err(ApiError {
+            code: "AUTH_ERROR".to_string(),
+            message: "Invalid credentials".to_string(),
+            details: None,
+            status: axum::http::StatusCode::UNAUTHORIZED,
+        });
+    }
+
+    state
+        .auth_application
+        .exchange_api_token_for_session(token, request.email)
+        .await
+        .map(RawResponse)
         .map_err(ApiError::from)
 }
 

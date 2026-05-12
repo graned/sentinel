@@ -227,6 +227,8 @@ fn build_auth_routes() -> Router {
         .route("/token/authorize/batch", post(check_authorization_batch))
         // Refresh tokens
         .route("/token/refresh", post(token_refresh))
+        // API token exchange — no auth middleware (uses API token as credential)
+        .route("/token/exchange", post(exchange_api_token))
         .route("/auth-methods", get(get_auth_methods))
         .merge(auth_protected)
         .merge(api_token_routes)

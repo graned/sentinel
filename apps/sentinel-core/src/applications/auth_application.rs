@@ -331,6 +331,151 @@ impl AuthApplication {
         Ok(())
     }
 
+    /// POST /v1/api/auth/token/exchange
+    ///
+    /// Exchange an admin API token for a PASETO session token pair for a target user.
+    /// The API token is an admin-level integration credential — the email in the
+    /// request body identifies the target user whose session will be created.
+    /// On success, marks the target user's email as verified and promotes
+    /// status from PendingVerification → Active. Token is NOT revoked.
+    /// MFA is skipped (API token is already a strong credential).
+    pub async fn exchange_api_token_for_session(
+        &self,
+        raw_api_token: String,
+        email: String,
+    ) -> Result<BasicLoginResponse, ServiceError> {
+        let mut conn = self.pg_client.get_conn().await?;
+
+        let identity_service = self.identity_service.clone();
+        let user_service = self.user_service.clone();
+        let user_role_service = self.user_role_service.clone();
+        let session_service = self.session_service.clone();
+        let api_token_service = self.api_token_service.clone();
+
+        let response = conn
+            .transaction(move |trx| {
+                let identity_service = identity_service.clone();
+                let user_service = user_service.clone();
+                let user_role_service = user_role_service.clone();
+                let session_service = session_service.clone();
+                let api_token_service = api_token_service.clone();
+                let email = email;
+
+                async move {
+                    // 1. Validate the API token (checks hash, revoked_at, expires_at)
+                    let api_token = api_token_service
+                        .validate_token(trx, &raw_api_token)
+                        .await?;
+                    let admin_user_id = api_token.user_id;
+
+                    // 1b. Verify the token owner has admin role
+                    let admin_roles = user_role_service
+                        .get_roles_by_user_id(trx, admin_user_id)
+                        .await?;
+                    let is_admin = admin_roles.iter().any(|r| r.type_ == RoleType::Admin);
+                    if !is_admin {
+                        return Err(ServiceError::AuthorizationError(
+                            "Insufficient permissions".to_string(),
+                        ));
+                    }
+
+                    // 2. Find the target user by email from the request body
+                    let identity = identity_service
+                        .find_identity_by_email(trx, &email)
+                        .await?
+                        .ok_or_else(|| {
+                            ServiceError::AuthenticationError("Invalid credentials".to_string())
+                        })?;
+
+                    // 3. Mark email as verified on the target identity
+                    identity_service
+                        .mark_email_verified(trx, identity.identity_id)
+                        .await?;
+
+                    // 4. Re-fetch identity to get updated email_verified = true
+                    let updated_identity = identity_service
+                        .find_identity_by_id(trx, identity.identity_id)
+                        .await?
+                        .ok_or_else(|| {
+                            ServiceError::InternalError(
+                                "Identity disappeared after email verification".into(),
+                            )
+                        })?;
+
+                    // 5. Fetch the target user (by identity.user_id, not api_token.user_id)
+                    let user = user_service
+                        .find_user_by_id(trx, identity.user_id)
+                        .await?
+                        .ok_or_else(|| {
+                            ServiceError::AuthenticationError("User not found".to_string())
+                        })?;
+
+                    // 6. Promote user from PendingVerification → Active
+                    if user.status == UserStatus::PendingVerification {
+                        user_service
+                            .update_user_status(trx, user.user_id, UserStatus::Active)
+                            .await?;
+                    }
+
+                    // 7. Get user roles
+                    let roles = user_role_service.get_user_roles(trx, &user).await?;
+
+                    // 8. Generate session tokens (NOW with ev: true from updated_identity)
+                    let session_id = uuid::Uuid::new_v4();
+                    let tokens = session_service.generate_session_token(
+                        &user,
+                        &session_id,
+                        &roles,
+                        &updated_identity,
+                    )?;
+
+                    // 9. Create session row for the target user (created_by records the admin)
+                    let now = chrono::Utc::now();
+                    let access_expires_at = now + session_service.access_ttl;
+                    let refresh_expires_at = now + session_service.refresh_ttl;
+
+                    let new_session = Sessions {
+                        session_id,
+                        user_id: user.user_id,
+                        identity_id: updated_identity.identity_id,
+                        refresh_token_hash: tokens.refresh_token_hash.clone(),
+                        refresh_token_family: uuid::Uuid::new_v4(),
+                        refresh_token_expires_at: refresh_expires_at,
+                        user_agent: None,
+                        ip_address: None,
+                        device_type: None,
+                        revoked_at: None,
+                        revoked_reason: None,
+                        last_used_at: None,
+                        created_at: Some(now),
+                        updated_at: Some(now),
+                        created_by: Some(admin_user_id),
+                        updated_by: Some(admin_user_id),
+                    };
+
+                    session_service.create_session(trx, &new_session).await?;
+
+                    // 10. Record API token usage (last_used_at)
+                    api_token_service
+                        .record_usage(trx, api_token.api_token_id)
+                        .await?;
+
+                    Ok::<BasicLoginResponse, ServiceError>(BasicLoginResponse {
+                        user_id: user.user_id,
+                        access_token: tokens.access_token,
+                        refresh_token: tokens.refresh_token,
+                        expires_at: access_expires_at,
+                        must_change_password: updated_identity.must_change_password,
+                        mfa_setup_required: false,
+                    })
+                }
+                .scope_boxed()
+            })
+            .await?;
+
+        Ok(response)
+    }
+
     pub async fn resend_verification(&self, email: String) -> Result<(), ServiceError> {
         tracing::info!(email, "resend_verification: starting");
 

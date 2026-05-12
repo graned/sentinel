@@ -169,6 +169,32 @@ impl ApiTokenService {
 
         Ok(token)
     }
+
+    /// Stamp `last_used_at = now()` on an API token.
+    /// Called during successful API token → session exchange for auditability.
+    pub async fn record_usage(
+        &self,
+        conn: &mut DbConnection<'_>,
+        token_id: Uuid,
+    ) -> Result<(), ServiceError> {
+        #[derive(diesel::AsChangeset)]
+        #[diesel(table_name = crate::schema::api_tokens)]
+        struct UsageChangeset {
+            last_used_at: Option<chrono::DateTime<Utc>>,
+        }
+
+        self.repo
+            .update(
+                conn,
+                token_id,
+                UsageChangeset {
+                    last_used_at: Some(Utc::now()),
+                },
+            )
+            .await
+            .map(|_| ())
+            .map_err(|e| ServiceError::DatabaseError(e.to_string()))
+    }
 }
 
 /// Compute the lowercase hex SHA-256 digest of `s`.
