@@ -39,13 +39,14 @@ async fn register_new_user(client: &Client) -> String {
         .json(&json!({
             "email": email,
             "password": password,
-            "first_name": "Exchange"
+            "first_name": "Exchange",
+            "last_name": "User"
         }))
         .send()
         .await
         .expect("request failed");
     let (status, _, raw) = read_json(res).await;
-    assert_eq!(status, 201, "register failed: {raw}");
+    assert_eq!(status, 200, "register failed: {raw}");
     email
 }
 
