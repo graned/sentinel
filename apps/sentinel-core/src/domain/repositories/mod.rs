@@ -28,6 +28,7 @@
 pub mod api_token_repository;
 pub mod email_template_repository;
 pub mod email_verification_repository;
+pub mod external_identity_repository;
 pub mod identities_repository;
 pub mod oidc_auth_code_repository;
 pub mod oidc_client_repository;
@@ -46,6 +47,7 @@ pub mod user_role_repository;
 pub use api_token_repository::*;
 pub use email_template_repository::*;
 pub use email_verification_repository::*;
+pub use external_identity_repository::*;
 pub use identities_repository::*;
 pub use oidc_auth_code_repository::*;
 pub use oidc_client_repository::*;

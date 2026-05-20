@@ -91,6 +91,23 @@ diesel::table! {
 }
 
 diesel::table! {
+    external_identities (external_identity_id) {
+        external_identity_id -> Uuid,
+        user_id -> Uuid,
+        provider -> Text,
+        issuer -> Text,
+        subject -> Text,
+        email_snapshot -> Nullable<Text>,
+        metadata -> Nullable<Jsonb>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+        last_login_at -> Nullable<Timestamptz>,
+        created_by -> Nullable<Uuid>,
+        updated_by -> Nullable<Uuid>,
+    }
+}
+
+diesel::table! {
     oidc_auth_codes (oidc_auth_code_id) {
         oidc_auth_code_id -> Uuid,
         code_hash -> Text,
@@ -313,6 +330,8 @@ diesel::table! {
         created_by -> Nullable<Uuid>,
         updated_by -> Nullable<Uuid>,
         mfa_required -> Bool,
+        #[max_length = 255]
+        display_name -> Nullable<Varchar>,
     }
 }
 
@@ -332,22 +351,4 @@ diesel::joinable!(user_roles -> roles (role_id));
 diesel::joinable!(user_roles -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    api_tokens,
-    auth_configs,
-    email_templates,
-    email_verifications,
-    oidc_auth_codes,
-    oidc_clients,
-    oidc_signing_keys,
-    password_reset_tokens,
-    policies,
-    policy_versions,
-    provider_configurations,
-    roles,
-    sessions,
-    user_identities,
-    user_mfa_totp,
-    user_recovery_codes,
-    user_roles,
-    users,
-);
+    api_tokens,auth_configs,email_templates,email_verifications,external_identities,oidc_auth_codes,oidc_clients,oidc_signing_keys,password_reset_tokens,policies,policy_versions,provider_configurations,roles,sessions,user_identities,user_mfa_totp,user_recovery_codes,user_roles,users,);

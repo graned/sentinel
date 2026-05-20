@@ -136,6 +136,39 @@ pub struct EmailVerification {
 }
 
 // ============================================================================
+// Model: ExternalIdentity
+// ============================================================================
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    Queryable,
+    Selectable,
+    Insertable,
+    AsChangeset,
+    Identifiable,
+    QueryableByName,
+)]
+#[diesel(table_name = crate::schema::external_identities)]
+#[diesel(primary_key(external_identity_id))]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ExternalIdentity {
+    pub external_identity_id: Uuid,
+    pub user_id: Uuid,
+    pub provider: String,
+    pub issuer: String,
+    pub subject: String,
+    pub email_snapshot: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub last_login_at: Option<DateTime<Utc>>,
+    pub created_by: Option<Uuid>,
+    pub updated_by: Option<Uuid>,
+}
+
+// ============================================================================
 // Model: OidcAuthCode
 // ============================================================================
 #[derive(
@@ -565,4 +598,5 @@ pub struct User {
     pub created_by: Option<Uuid>,
     pub updated_by: Option<Uuid>,
     pub mfa_required: bool,
+    pub display_name: Option<String>,
 }

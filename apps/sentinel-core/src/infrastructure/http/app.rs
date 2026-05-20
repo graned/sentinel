@@ -11,14 +11,16 @@ use crate::{
     AdminSessionApplication, ApiTokenApplication, ApiTokenRepository, ApiTokenService,
     AuthApplication, EmailService, EmailTemplateApplication, EmailTemplateRepository,
     EmailTemplateService, EmailVerificationRepository, EmailVerificationService,
-    IdentitiesRepository, IdentityService, InsightsApplication, MfaApplication, MfaTotpService,
-    OidcApplication, OidcAuthCodeRepository, OidcAuthCodeService, OidcClientRepository,
-    OidcClientService, OidcKeyService, OidcSigningKeyRepository, OidcTokenService,
-    PasswordResetService, PasswordResetTokenRepository, PolicyApplication, PolicyRepository,
-    PolicyService, PolicyVersionRepository, PostgresClient, ProviderConfigurationReposiory,
+    ExternalIdentityRepository, FederationApplication, FederationService, IdentitiesRepository,
+    IdentityService, InsightsApplication, MfaApplication, MfaTotpService, OidcApplication,
+    OidcAuthCodeRepository, OidcAuthCodeService, OidcClientRepository, OidcClientService,
+    OidcKeyService, OidcSigningKeyRepository, OidcTokenService, PasswordResetService,
+    PasswordResetTokenRepository, PolicyApplication, PolicyRepository, PolicyService,
+    PolicyVersionRepository, PostgresClient, ProviderConfigurationReposiory,
     ProviderConfigurationService, RoleRepository, SessionRepository, SessionService,
-    SystemApplication, UserApplication, UserMfaTotpRepository, UserPasswordApplication,
-    UserRecoveryCodeRepository, UserRepository, UserRoleRepository, UserRoleService, UserService,
+    SupabaseFederationConfig, SupabaseJwtVerifier, SystemApplication, UserApplication,
+    UserMfaTotpRepository, UserPasswordApplication, UserRecoveryCodeRepository, UserRepository,
+    UserRoleRepository, UserRoleService, UserService,
 };
 use axum::Router;
 use std::sync::Arc;
@@ -185,6 +187,11 @@ pub async fn build_app(
         pg_client.clone(),
     ));
 
+    // Clone services for federation before they're moved
+    let identity_service_for_federation = identity_service.clone();
+    let user_service_for_federation = user_service.clone();
+    let session_service_for_federation = session_service.clone();
+
     let admin_application = Arc::new(AdminApplication::new(
         pg_client.clone(),
         user_service,
@@ -209,6 +216,44 @@ pub async fn build_app(
         identities_repo_insights,
     ));
 
+    // Federation components
+    let supabase_federation_enabled = std::env::var("SUPABASE_FEDERATION_ENABLED")
+        .unwrap_or_else(|_| "false".to_string())
+        .parse::<bool>()
+        .unwrap_or(false);
+
+    let supabase_jwks_url =
+        std::env::var("SUPABASE_JWKS_URL").unwrap_or_else(|_| String::new());
+
+    let supabase_jwt_issuer =
+        std::env::var("SUPABASE_JWT_ISSUER").unwrap_or_else(|_| String::new());
+
+    let supabase_jwt_audience =
+        std::env::var("SUPABASE_JWT_AUDIENCE").unwrap_or_else(|_| String::new());
+
+    let external_identity_repo = Arc::new(ExternalIdentityRepository::new());
+
+    let federation_service = Arc::new(FederationService::new(
+        external_identity_repo,
+        identity_service_for_federation,
+        user_service_for_federation,
+        user_role_service.clone(),
+        session_service_for_federation,
+    ));
+
+    let federation_config = SupabaseFederationConfig {
+        enabled: supabase_federation_enabled,
+        jwks_url: supabase_jwks_url,
+        jwt_issuer: supabase_jwt_issuer,
+        jwt_audience: supabase_jwt_audience,
+    };
+
+    let federation_application = Arc::new(FederationApplication::new(
+        pg_client.clone(),
+        federation_service,
+        federation_config,
+    ));
+
     let app_state = Arc::new(AppState {
         auth_application,
         system_application,
@@ -222,6 +267,7 @@ pub async fn build_app(
         admin_application,
         admin_session_application,
         insights_application,
+        federation_application,
     });
 
     Ok(build_router(app_state))

@@ -44,6 +44,7 @@ use crate::{
     http::api::handlers::api_token_handlers::*,
     http::api::handlers::auth_handlers::*,
     http::api::handlers::email_template_handlers::*,
+    http::api::handlers::federation_handlers::*,
     http::api::handlers::mfa_handlers::*,
     http::api::handlers::password_handlers::*,
     http::api::handlers::system_handlers::*,
@@ -56,6 +57,7 @@ use crate::{
         response_wrapper::ResponseWrapperLayer,
     },
     http::api::openapi::ApiDoc,
+    http::api::routes::federation_router::build_federation_routes,
     http::api::routes::oauth_router::{build_oauth_routes, build_oidc_discovery_routes},
     http::api::RequestId,
     http::server::AppState,
@@ -148,6 +150,7 @@ pub fn build_router(app_state: std::sync::Arc<AppState>) -> Router {
         .nest("/v1/api/user", build_user_routes())
         .nest("/v1/api/admin", build_admin_routes())
         .nest("/v1/api/system", build_system_routes())
+        .nest("/v1/api/federation", build_federation_routes())
         .fallback(not_found_handler)
         .layer(ResponseWrapperLayer);
 

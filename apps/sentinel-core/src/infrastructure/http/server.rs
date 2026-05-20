@@ -17,8 +17,9 @@ use tower::make::Shared;
 
 use crate::{
     AdminApplication, AdminSessionApplication, ApiTokenApplication, AuthApplication,
-    EmailTemplateApplication, InsightsApplication, MfaApplication, OidcApplication,
-    PolicyApplication, SystemApplication, UserApplication, UserPasswordApplication,
+    EmailTemplateApplication, FederationApplication, InsightsApplication, MfaApplication,
+    OidcApplication, PolicyApplication, SystemApplication, UserApplication,
+    UserPasswordApplication,
 };
 
 /// Shared application state threaded through every Axum handler via
@@ -42,6 +43,7 @@ pub struct AppState {
     pub admin_application: Arc<AdminApplication>,
     pub admin_session_application: Arc<AdminSessionApplication>,
     pub insights_application: Arc<InsightsApplication>,
+    pub federation_application: Arc<FederationApplication>,
 }
 
 /// Thin wrapper that binds an Axum [`Router`] to a TCP listener and runs it.

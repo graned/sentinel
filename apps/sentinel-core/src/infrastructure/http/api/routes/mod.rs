@@ -4,6 +4,7 @@
 
 pub mod api_router;
 pub mod api_validation;
+pub mod federation_router;
 pub mod oauth_router;
 
 // Re-export routes
