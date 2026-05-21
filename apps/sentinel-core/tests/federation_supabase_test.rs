@@ -330,13 +330,7 @@ async fn exchange_invalid_signature_returns_401() {
     });
 
     let sub = uuid::Uuid::new_v4().to_string();
-    let token = generate_jwt_wrong_key(
-        &wrong_key,
-        &kid,
-        &sub,
-        SUPABASE_ISSUER,
-        SUPABASE_AUDIENCE,
-    );
+    let token = generate_jwt_wrong_key(&wrong_key, &kid, &sub, SUPABASE_ISSUER, SUPABASE_AUDIENCE);
 
     let client = Client::new();
     let res = post_json(
@@ -374,13 +368,8 @@ async fn exchange_expired_token_returns_401() {
     });
 
     let sub = uuid::Uuid::new_v4().to_string();
-    let token = generate_expired_test_jwt(
-        &private_key,
-        &kid,
-        &sub,
-        SUPABASE_ISSUER,
-        SUPABASE_AUDIENCE,
-    );
+    let token =
+        generate_expired_test_jwt(&private_key, &kid, &sub, SUPABASE_ISSUER, SUPABASE_AUDIENCE);
 
     let client = Client::new();
     let res = post_json(
@@ -508,13 +497,8 @@ async fn exchange_unknown_kid_returns_401() {
     });
 
     let sub = uuid::Uuid::new_v4().to_string();
-    let token = generate_jwt_unknown_kid(
-        &private_key,
-        &kid,
-        &sub,
-        SUPABASE_ISSUER,
-        SUPABASE_AUDIENCE,
-    );
+    let token =
+        generate_jwt_unknown_kid(&private_key, &kid, &sub, SUPABASE_ISSUER, SUPABASE_AUDIENCE);
 
     let client = Client::new();
     let res = post_json(

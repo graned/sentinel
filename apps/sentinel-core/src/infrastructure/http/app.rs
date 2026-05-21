@@ -222,8 +222,7 @@ pub async fn build_app(
         .parse::<bool>()
         .unwrap_or(false);
 
-    let supabase_jwks_url =
-        std::env::var("SUPABASE_JWKS_URL").unwrap_or_else(|_| String::new());
+    let supabase_jwks_url = std::env::var("SUPABASE_JWKS_URL").unwrap_or_else(|_| String::new());
 
     let supabase_jwt_issuer =
         std::env::var("SUPABASE_JWT_ISSUER").unwrap_or_else(|_| String::new());

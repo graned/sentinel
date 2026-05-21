@@ -131,18 +131,15 @@ impl FederationService {
         email: Option<String>,
         user_metadata: Option<serde_json::Value>,
     ) -> Result<(Sessions, crate::SessionTokens), ServiceError> {
-        let user_id = Uuid::parse_str(subject).map_err(|_| {
-            ServiceError::InternalError("Invalid subject UUID format".to_string())
-        })?;
+        let user_id = Uuid::parse_str(subject)
+            .map_err(|_| ServiceError::InternalError("Invalid subject UUID format".to_string()))?;
 
-        let display_name = user_metadata
-            .as_ref()
-            .and_then(|m| {
-                m.get("full_name")
-                    .or_else(|| m.get("name"))
-                    .and_then(|v| v.as_str())
-                    .map(String::from)
-            });
+        let display_name = user_metadata.as_ref().and_then(|m| {
+            m.get("full_name")
+                .or_else(|| m.get("name"))
+                .and_then(|v| v.as_str())
+                .map(String::from)
+        });
 
         let user = User {
             user_id,
@@ -166,9 +163,9 @@ impl FederationService {
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
 
         let identity_id = Uuid::new_v4();
-        let identity_email = email.clone().unwrap_or_else(|| {
-            format!("{}@federated.local", subject)
-        });
+        let identity_email = email
+            .clone()
+            .unwrap_or_else(|| format!("{}@federated.local", subject));
 
         let identity = UserIdentity {
             identity_id,
@@ -237,7 +234,8 @@ impl FederationService {
 
         let roles = vec![role];
 
-        self.create_session(conn, &persisted_user, &identity, &roles).await
+        self.create_session(conn, &persisted_user, &identity, &roles)
+            .await
     }
 
     /// Update identity metadata snapshot.
@@ -248,17 +246,14 @@ impl FederationService {
         metadata: Option<serde_json::Value>,
     ) -> Result<(), ServiceError> {
         use crate::schema::external_identities::dsl::{
-            external_identity_id as col_id, external_identities, metadata as col_metadata,
+            external_identities, external_identity_id as col_id, metadata as col_metadata,
             updated_at,
         };
         use diesel::{ExpressionMethods, QueryDsl};
         use diesel_async::RunQueryDsl;
 
         diesel::update(external_identities.filter(col_id.eq(external_identity_id)))
-            .set((
-                col_metadata.eq(metadata),
-                updated_at.eq(Utc::now()),
-            ))
+            .set((col_metadata.eq(metadata), updated_at.eq(Utc::now())))
             .execute(conn)
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
@@ -274,9 +269,9 @@ impl FederationService {
         roles: &[crate::Role],
     ) -> Result<(Sessions, crate::SessionTokens), ServiceError> {
         let session_id = Uuid::new_v4();
-        let tokens = self
-            .session_service
-            .generate_session_token(user, &session_id, roles, identity)?;
+        let tokens =
+            self.session_service
+                .generate_session_token(user, &session_id, roles, identity)?;
 
         let now = Utc::now();
         let session = Sessions {

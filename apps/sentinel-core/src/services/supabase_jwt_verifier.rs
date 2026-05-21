@@ -65,19 +65,15 @@ impl SupabaseJwtVerifier {
 
     /// Fetch JWKS from the configured URL.
     async fn fetch_jwks(&self) -> Result<JwkSet, ServiceError> {
-        let response = self
-            .client
-            .get(&self.jwks_url)
-            .send()
-            .await
-            .map_err(|e| ServiceError::AuthenticationError(format!("JWKS fetch failed: {}", e)))?;
+        let response =
+            self.client.get(&self.jwks_url).send().await.map_err(|e| {
+                ServiceError::AuthenticationError(format!("JWKS fetch failed: {}", e))
+            })?;
 
         let jwks: JwkSet = response
             .json()
             .await
-            .map_err(|e| {
-                ServiceError::AuthenticationError(format!("JWKS parse failed: {}", e))
-            })?;
+            .map_err(|e| ServiceError::AuthenticationError(format!("JWKS parse failed: {}", e)))?;
 
         Ok(jwks)
     }
@@ -112,9 +108,8 @@ impl SupabaseJwtVerifier {
                 ServiceError::AuthenticationError(format!("Unknown key ID (kid): {}", kid))
             })?;
 
-        DecodingKey::from_jwk(jwk).map_err(|e| {
-            ServiceError::AuthenticationError(format!("Invalid JWK: {}", e))
-        })
+        DecodingKey::from_jwk(jwk)
+            .map_err(|e| ServiceError::AuthenticationError(format!("Invalid JWK: {}", e)))
     }
 
     /// Validate and decode a Supabase JWT.
