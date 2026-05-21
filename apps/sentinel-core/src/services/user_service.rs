@@ -10,6 +10,8 @@
 
 use crate::{DbConnection, ServiceError, User, UserRepository, UserStatus};
 use diesel::OptionalExtension;
+use diesel::QueryDsl;
+use diesel_async::RunQueryDsl;
 
 use std::sync::Arc;
 use uuid::Uuid;
@@ -140,6 +142,27 @@ impl UserService {
             .update(conn, user_id, changes)
             .await
             .optional()
+            .map_err(|e| ServiceError::DatabaseError(e.to_string()))
+    }
+
+    /// Update display_name and avatar_url for federated user profiles.
+    pub async fn update_federated_user_profile(
+        &self,
+        conn: &mut DbConnection<'_>,
+        user_id: Uuid,
+        display_name: String,
+        avatar_url: Option<String>,
+    ) -> Result<User, ServiceError> {
+        use crate::schema::users::dsl as users_dsl;
+        use diesel::ExpressionMethods;
+
+        diesel::update(users_dsl::users.find(user_id))
+            .set((
+                users_dsl::display_name.eq(Some(display_name)),
+                users_dsl::avatar_url.eq(avatar_url),
+            ))
+            .get_result(conn)
+            .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))
     }
 

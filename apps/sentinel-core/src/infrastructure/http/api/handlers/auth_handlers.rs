@@ -433,7 +433,12 @@ pub async fn exchange_api_token(
 
     state
         .auth_application
-        .exchange_api_token_for_session(token, request.email)
+        .exchange_api_token_for_session(
+            token,
+            request.email,
+            request.display_name,
+            request.avatar_url,
+        )
         .await
         .map(RawResponse)
         .map_err(ApiError::from)

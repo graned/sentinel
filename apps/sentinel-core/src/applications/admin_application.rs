@@ -362,7 +362,7 @@ impl AdminApplication {
             first_name: Some(req.first_name.clone()),
             last_name: Some(req.last_name.clone()),
             avatar_url: None,
-            // Admin-invited users start as PendingVerification until email is confirmed
+            display_name: None,
             status: UserStatus::PendingVerification,
             token_version: 0,
             mfa_required: false,

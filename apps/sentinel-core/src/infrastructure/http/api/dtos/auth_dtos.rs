@@ -77,6 +77,14 @@ pub struct ExchangeApiTokenRequest {
     /// Email of the target user to create a session for.
     #[validate(email)]
     pub email: String,
+
+    /// Display name of the user (from external identity provider).
+    #[validate(length(min = 1, max = 255))]
+    pub display_name: String,
+
+    /// Avatar URL of the user (from external identity provider).
+    #[validate(url)]
+    pub avatar_url: Option<String>,
 }
 
 //************* Verify email DTOs *************

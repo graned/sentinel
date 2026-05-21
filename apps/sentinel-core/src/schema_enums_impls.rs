@@ -31,6 +31,7 @@ impl IdentityProvider {
             IdentityProvider::Saml => "saml",
             IdentityProvider::Ldap => "ldap",
             IdentityProvider::Custom => "custom",
+            IdentityProvider::TokenFederation => "token_federation",
         }
     }
 }

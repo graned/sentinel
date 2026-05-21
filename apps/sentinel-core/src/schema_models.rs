@@ -565,4 +565,5 @@ pub struct User {
     pub created_by: Option<Uuid>,
     pub updated_by: Option<Uuid>,
     pub mfa_required: bool,
+    pub display_name: Option<String>,
 }

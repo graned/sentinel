@@ -204,6 +204,7 @@ impl AuthApplication {
                         first_name: Some(request.first_name.clone()),
                         last_name: Some(request.last_name.clone()),
                         avatar_url: request.avatar_url.clone(),
+                        display_name: None,
                         status: UserStatus::PendingVerification,
                         token_version: 0,
                         mfa_required: false,
@@ -334,15 +335,27 @@ impl AuthApplication {
     /// POST /v1/api/auth/token/exchange
     ///
     /// Exchange an admin API token for a PASETO session token pair for a target user.
-    /// The API token is an admin-level integration credential — the email in the
-    /// request body identifies the target user whose session will be created.
-    /// On success, marks the target user's email as verified and promotes
-    /// status from PendingVerification → Active. Token is NOT revoked.
-    /// MFA is skipped (API token is already a strong credential).
+    /// The API token is an admin-level integration credential — the email, display_name,
+    /// and avatar_url in the request body identify the target user whose session will be created.
+    ///
+    /// If the user does not exist, a new user is created with:
+    /// - provider = token_federation
+    /// - password = null
+    /// - email_verified = true
+    /// - status = active
+    /// - must_change_password = false
+    /// - role = user (default)
+    ///
+    /// If the user exists with provider=token_federation, their display_name and avatar_url
+    /// are updated from the request.
+    ///
+    /// On success, returns session tokens. MFA is skipped (API token is already a strong credential).
     pub async fn exchange_api_token_for_session(
         &self,
         raw_api_token: String,
         email: String,
+        display_name: String,
+        avatar_url: Option<String>,
     ) -> Result<BasicLoginResponse, ServiceError> {
         let mut conn = self.pg_client.get_conn().await?;
 
@@ -360,6 +373,8 @@ impl AuthApplication {
                 let session_service = session_service.clone();
                 let api_token_service = api_token_service.clone();
                 let email = email;
+                let display_name = display_name;
+                let avatar_url = avatar_url;
 
                 async move {
                     // 1. Validate the API token (checks hash, revoked_at, expires_at)
@@ -380,47 +395,109 @@ impl AuthApplication {
                     }
 
                     // 2. Find the target user by email from the request body
-                    let identity = identity_service
-                        .find_identity_by_email(trx, &email)
-                        .await?
-                        .ok_or_else(|| {
-                            ServiceError::AuthenticationError("Invalid credentials".to_string())
-                        })?;
+                    let identity = identity_service.find_identity_by_email(trx, &email).await?;
 
-                    // 3. Mark email as verified on the target identity
-                    identity_service
-                        .mark_email_verified(trx, identity.identity_id)
-                        .await?;
+                    let (user, updated_identity) = if let Some(existing_identity) = identity {
+                        // User exists - validate and update if needed
+                        let user = user_service
+                            .find_user_by_id(trx, existing_identity.user_id)
+                            .await?
+                            .ok_or_else(|| {
+                                ServiceError::AuthenticationError("User not found".to_string())
+                            })?;
 
-                    // 4. Re-fetch identity to get updated email_verified = true
-                    let updated_identity = identity_service
-                        .find_identity_by_id(trx, identity.identity_id)
-                        .await?
-                        .ok_or_else(|| {
-                            ServiceError::InternalError(
-                                "Identity disappeared after email verification".into(),
+                        // Validate user state for token federation
+                        if existing_identity.provider != IdentityProvider::TokenFederation {
+                            return Err(ServiceError::ValidationError(
+                                "User exists but was not created via token federation".to_string(),
+                            ));
+                        }
+
+                        // Update display_name and avatar_url on the user record
+                        let updated_user = user_service
+                            .update_federated_user_profile(
+                                trx,
+                                user.user_id,
+                                display_name.clone(),
+                                avatar_url.clone(),
                             )
-                        })?;
-
-                    // 5. Fetch the target user (by identity.user_id, not api_token.user_id)
-                    let user = user_service
-                        .find_user_by_id(trx, identity.user_id)
-                        .await?
-                        .ok_or_else(|| {
-                            ServiceError::AuthenticationError("User not found".to_string())
-                        })?;
-
-                    // 6. Promote user from PendingVerification → Active
-                    if user.status == UserStatus::PendingVerification {
-                        user_service
-                            .update_user_status(trx, user.user_id, UserStatus::Active)
                             .await?;
-                    }
 
-                    // 7. Get user roles
+                        // Ensure identity has email_verified = true and must_change_password = false
+                        let identity_updated = identity_service
+                            .ensure_federation_identity_state(trx, existing_identity.identity_id)
+                            .await?;
+
+                        (updated_user, identity_updated)
+                    } else {
+                        // User does not exist - create new federated user
+                        let now = Utc::now();
+                        let user_id = Uuid::new_v4();
+
+                        // Create user with display_name and avatar_url
+                        let new_user = User {
+                            user_id,
+                            first_name: None,
+                            last_name: None,
+                            avatar_url: avatar_url.clone(),
+                            display_name: Some(display_name.clone()),
+                            status: UserStatus::Active,
+                            token_version: 0,
+                            mfa_required: false,
+                            created_by: Some(admin_user_id),
+                            created_at: Some(now),
+                            updated_by: Some(admin_user_id),
+                            updated_at: Some(now),
+                        };
+                        let persisted_user = user_service.create_user(trx, &new_user).await?;
+
+                        // Create identity with provider=token_federation, password=null, email_verified=true
+                        let identity_id = Uuid::new_v4();
+                        let new_identity = UserIdentity {
+                            identity_id,
+                            user_id,
+                            provider: IdentityProvider::TokenFederation,
+                            provider_user_id: None,
+                            email: email.clone(),
+                            password_hash: None,
+                            password_changed_at: None,
+                            email_verified: Some(true),
+                            oauth_access_token: None,
+                            oauth_refresh_token: None,
+                            oauth_token_expires_at: None,
+                            is_primary: true,
+                            last_login_at: None,
+                            must_change_password: false,
+                            created_by: Some(admin_user_id),
+                            created_at: Some(now),
+                            updated_by: Some(admin_user_id),
+                            updated_at: Some(now),
+                        };
+                        let persisted_identity =
+                            identity_service.create_identity(trx, &new_identity).await?;
+
+                        // Assign default 'user' role
+                        let user_role = user_role_service
+                            .get_role_by_type(trx, RoleType::User)
+                            .await?;
+                        let new_user_role = UserRole {
+                            user_role_id: Uuid::new_v4(),
+                            user_id,
+                            role_id: user_role.role_id,
+                            created_by: Some(admin_user_id),
+                            created_at: Utc::now(),
+                        };
+                        user_role_service
+                            .add_role_to_user(trx, &new_user_role)
+                            .await?;
+
+                        (persisted_user, persisted_identity)
+                    };
+
+                    // 3. Get user roles
                     let roles = user_role_service.get_user_roles(trx, &user).await?;
 
-                    // 8. Generate session tokens (NOW with ev: true from updated_identity)
+                    // 4. Generate session tokens
                     let session_id = uuid::Uuid::new_v4();
                     let tokens = session_service.generate_session_token(
                         &user,
@@ -429,7 +506,7 @@ impl AuthApplication {
                         &updated_identity,
                     )?;
 
-                    // 9. Create session row for the target user (created_by records the admin)
+                    // 5. Create session row for the target user
                     let now = chrono::Utc::now();
                     let access_expires_at = now + session_service.access_ttl;
                     let refresh_expires_at = now + session_service.refresh_ttl;
@@ -455,7 +532,7 @@ impl AuthApplication {
 
                     session_service.create_session(trx, &new_session).await?;
 
-                    // 10. Record API token usage (last_used_at)
+                    // 6. Record API token usage (last_used_at)
                     api_token_service
                         .record_usage(trx, api_token.api_token_id)
                         .await?;

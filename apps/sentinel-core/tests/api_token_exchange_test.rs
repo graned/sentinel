@@ -71,14 +71,21 @@ async fn create_api_token(client: &Client) -> String {
 // ── Happy path ──────────────────────────────────────────────────────────────
 
 #[tokio::test]
-async fn exchange_valid_token_returns_session_tokens() {
+async fn exchange_valid_token_creates_federated_user() {
     let client = Client::new();
     let raw_api_token = create_api_token(&client).await;
+
+    // Use a new email that doesn't exist yet
+    let new_email = format!("federated-{}@test.com", Uuid::new_v4());
 
     let res = client
         .post(get_api_token_exchange_url())
         .bearer_auth(&raw_api_token)
-        .json(&json!({ "email": "admin@sentinel.local" }))
+        .json(&json!({
+            "email": new_email,
+            "display_name": "Federated User",
+            "avatar_url": Some("https://example.com/avatar.png")
+        }))
         .send()
         .await
         .expect("request failed");
@@ -108,7 +115,11 @@ async fn exchange_without_bearer_returns_401() {
 
     let res = client
         .post(get_api_token_exchange_url())
-        .json(&json!({ "email": "admin@sentinel.local" }))
+        .json(&json!({
+            "email": "admin@sentinel.local",
+            "display_name": "Admin User",
+            "avatar_url": null
+        }))
         .send()
         .await
         .expect("request failed");
@@ -126,7 +137,11 @@ async fn exchange_with_paseto_token_returns_401() {
     let res = client
         .post(get_api_token_exchange_url())
         .bearer_auth(&paseto_token)
-        .json(&json!({ "email": "admin@sentinel.local" }))
+        .json(&json!({
+            "email": "admin@sentinel.local",
+            "display_name": "Admin User",
+            "avatar_url": null
+        }))
         .send()
         .await
         .expect("request failed");
@@ -147,7 +162,11 @@ async fn exchange_with_revoked_token_returns_401() {
     let res = client
         .post(get_api_token_exchange_url())
         .bearer_auth(&raw_api_token)
-        .json(&json!({ "email": "admin@sentinel.local" }))
+        .json(&json!({
+            "email": "admin@sentinel.local",
+            "display_name": "Admin User",
+            "avatar_url": null
+        }))
         .send()
         .await
         .expect("request failed");
@@ -158,7 +177,11 @@ async fn exchange_with_revoked_token_returns_401() {
     let res = client
         .post(get_api_token_exchange_url())
         .bearer_auth(&raw_api_token)
-        .json(&json!({ "email": "admin@sentinel.local" }))
+        .json(&json!({
+            "email": "admin@sentinel.local",
+            "display_name": "Admin User",
+            "avatar_url": null
+        }))
         .send()
         .await
         .expect("request failed");
@@ -173,7 +196,11 @@ async fn exchange_with_fake_token_returns_401() {
     let res = client
         .post(get_api_token_exchange_url())
         .bearer_auth("sat_fake00000000000000000000000000000000000000000000000000000000")
-        .json(&json!({ "email": "admin@sentinel.local" }))
+        .json(&json!({
+            "email": "admin@sentinel.local",
+            "display_name": "Admin User",
+            "avatar_url": null
+        }))
         .send()
         .await
         .expect("request failed");
@@ -184,22 +211,27 @@ async fn exchange_with_fake_token_returns_401() {
 }
 
 #[tokio::test]
-async fn exchange_with_wrong_email_returns_401() {
+async fn exchange_with_existing_non_federated_user_returns_400() {
     let client = Client::new();
     let raw_api_token = create_api_token(&client).await;
 
-    // Use a non-existent email
+    // Use the existing admin email which has email_password provider
     let res = client
         .post(get_api_token_exchange_url())
         .bearer_auth(&raw_api_token)
-        .json(&json!({ "email": "nonexistent@example.com" }))
+        .json(&json!({
+            "email": "admin@sentinel.local",
+            "display_name": "Admin User",
+            "avatar_url": null
+        }))
         .send()
         .await
         .expect("request failed");
     let (status, body, raw) = read_json(res).await;
 
-    assert_eq!(status, 401, "expected 401, got {status}\n{raw}");
-    assert_error_envelope(&body, "AUTH_ERROR");
+    // Should fail because admin@sentinel.local was created with email_password provider
+    assert_eq!(status, 400, "expected 400, got {status}\n{raw}");
+    assert_error_envelope(&body, "VALIDATION_ERROR");
 }
 
 // ── Session usability tests ──────────────────────────────────────────────────
@@ -209,10 +241,17 @@ async fn exchanged_session_is_usable() {
     let client = Client::new();
     let raw_api_token = create_api_token(&client).await;
 
+    // Create a new federated user
+    let new_email = format!("federated-{}@test.com", Uuid::new_v4());
+
     let res = client
         .post(get_api_token_exchange_url())
         .bearer_auth(&raw_api_token)
-        .json(&json!({ "email": "admin@sentinel.local" }))
+        .json(&json!({
+            "email": new_email,
+            "display_name": "Federated User",
+            "avatar_url": Some("https://example.com/avatar.png")
+        }))
         .send()
         .await
         .expect("request failed");
@@ -240,10 +279,17 @@ async fn exchange_returns_must_change_password() {
     let client = Client::new();
     let raw_api_token = create_api_token(&client).await;
 
+    // Create a new federated user
+    let new_email = format!("federated-{}@test.com", Uuid::new_v4());
+
     let res = client
         .post(get_api_token_exchange_url())
         .bearer_auth(&raw_api_token)
-        .json(&json!({ "email": "admin@sentinel.local" }))
+        .json(&json!({
+            "email": new_email,
+            "display_name": "Federated User",
+            "avatar_url": null
+        }))
         .send()
         .await
         .expect("request failed");
@@ -263,20 +309,24 @@ async fn exchange_returns_must_change_password() {
 // ── Cross-user exchange tests ────────────────────────────────────────────────
 
 #[tokio::test]
-async fn exchange_admin_token_for_different_user_returns_session() {
+async fn exchange_admin_token_for_different_user_creates_federated_user() {
     let client = Client::new();
 
-    // Register a new user (non-admin)
-    let target_email = register_new_user(&client).await;
+    // New email for federated user
+    let target_email = format!("federated-target-{}@test.com", Uuid::new_v4());
 
     // Admin creates an API token
     let raw_api_token = create_api_token(&client).await;
 
-    // Exchange the admin token for the new user's session
+    // Exchange the admin token to create a federated user session
     let res = client
         .post(get_api_token_exchange_url())
         .bearer_auth(&raw_api_token)
-        .json(&json!({ "email": target_email }))
+        .json(&json!({
+            "email": target_email,
+            "display_name": "Federated Target User",
+            "avatar_url": Some("https://example.com/target-avatar.png")
+        }))
         .send()
         .await
         .expect("request failed");
@@ -288,7 +338,7 @@ async fn exchange_admin_token_for_different_user_returns_session() {
         .expect("missing access_token")
         .to_string();
 
-    // Verify the session is for the target user (not the admin)
+    // Verify the session is for the target user
     let res = client
         .get(get_user_me_url())
         .bearer_auth(&access_token)

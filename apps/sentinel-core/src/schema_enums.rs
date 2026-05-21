@@ -31,6 +31,7 @@ pub enum IdentityProvider {
     Saml,
     Ldap,
     Custom,
+    TokenFederation,
 }
 
 // ============================================================================

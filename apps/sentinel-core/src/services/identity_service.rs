@@ -23,6 +23,9 @@
 use crate::schema::user_identities::{email, user_id};
 use crate::{DbConnection, IdentitiesRepository, ServiceError, UserIdentity};
 use diesel::ExpressionMethods;
+use diesel::QueryDsl;
+use diesel_async::RunQueryDsl;
+use uuid::Uuid;
 
 use std::sync::Arc;
 
@@ -197,5 +200,25 @@ impl IdentityService {
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
         Ok(results.into_iter().next())
+    }
+
+    /// Ensure identity state for federated users: email_verified=true, must_change_password=false.
+    /// Returns the updated identity.
+    pub async fn ensure_federation_identity_state(
+        &self,
+        conn: &mut DbConnection<'_>,
+        identity_id: Uuid,
+    ) -> Result<UserIdentity, ServiceError> {
+        use crate::schema::user_identities::dsl as identities_dsl;
+        use diesel::ExpressionMethods;
+
+        diesel::update(identities_dsl::user_identities.find(identity_id))
+            .set((
+                identities_dsl::email_verified.eq(Some(true)),
+                identities_dsl::must_change_password.eq(false),
+            ))
+            .get_result(conn)
+            .await
+            .map_err(|e| ServiceError::DatabaseError(e.to_string()))
     }
 }
