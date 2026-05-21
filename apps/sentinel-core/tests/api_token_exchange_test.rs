@@ -135,13 +135,16 @@ async fn exchange_with_revoked_token_returns_401() {
     let client = Client::new();
     let raw_api_token = create_api_token(&client).await;
 
+    // Create a federated user first
+    let federated_email = format!("federated-revoked-{}@test.com", Uuid::new_v4());
+
     // Exchange once (first succeeds)
     let res = client
         .post(get_api_token_exchange_url())
         .bearer_auth(&raw_api_token)
         .json(&json!({
-            "email": "admin@sentinel.local",
-            "display_name": "Admin User",
+            "email": federated_email,
+            "display_name": "Federated User",
             "avatar_url": null
         }))
         .send()
@@ -155,8 +158,8 @@ async fn exchange_with_revoked_token_returns_401() {
         .post(get_api_token_exchange_url())
         .bearer_auth(&raw_api_token)
         .json(&json!({
-            "email": "admin@sentinel.local",
-            "display_name": "Admin User",
+            "email": federated_email,
+            "display_name": "Federated User",
             "avatar_url": null
         }))
         .send()

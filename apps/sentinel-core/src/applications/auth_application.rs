@@ -435,10 +435,15 @@ impl AuthApplication {
                         let user_id = Uuid::new_v4();
 
                         // Create user with display_name and avatar_url
+                        // Split display_name into first_name/last_name for compatibility
+                        let name_parts: Vec<&str> = display_name.splitn(2, ' ').collect();
+                        let first_name = name_parts.first().map(|s| s.to_string());
+                        let last_name = name_parts.get(1).map(|s| s.to_string());
+
                         let new_user = User {
                             user_id,
-                            first_name: None,
-                            last_name: None,
+                            first_name,
+                            last_name,
                             avatar_url: avatar_url.clone(),
                             display_name: Some(display_name.clone()),
                             status: UserStatus::Active,
