@@ -9,6 +9,7 @@ pub mod api_token_service;
 pub mod email_service;
 pub mod email_template_service;
 pub mod email_verification_service;
+pub mod federation_service;
 pub mod identity_service;
 pub mod mfa_totp_service;
 pub mod oidc_auth_code_service;
@@ -19,6 +20,7 @@ pub mod password_reset_service;
 pub mod policy_service;
 pub mod provider_config_service;
 pub mod session_service;
+pub mod supabase_jwt_verifier;
 pub mod user_role_service;
 pub mod user_service;
 
@@ -29,6 +31,7 @@ pub use email_template_service::{
     UpdateEmailTemplateServiceRequest,
 };
 pub use email_verification_service::EmailVerificationService;
+pub use federation_service::FederationService;
 pub use identity_service::IdentityService;
 pub use mfa_totp_service::MfaTotpService;
 pub use oidc_auth_code_service::OidcAuthCodeService;
@@ -38,6 +41,7 @@ pub use oidc_token_service::OidcTokenService;
 pub use password_reset_service::PasswordResetService;
 pub use policy_service::PolicyService;
 pub use provider_config_service::ProviderConfigurationService;
-pub use session_service::SessionService;
+pub use session_service::{SessionService, SessionTokens};
+pub use supabase_jwt_verifier::{SupabaseFederationConfig, SupabaseJwtVerifier, VerifiedSupabaseToken};
 pub use user_role_service::UserRoleService;
 pub use user_service::UserService;

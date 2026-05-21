@@ -362,7 +362,6 @@ impl AdminApplication {
             first_name: Some(req.first_name.clone()),
             last_name: Some(req.last_name.clone()),
             avatar_url: None,
-            // Admin-invited users start as PendingVerification until email is confirmed
             status: UserStatus::PendingVerification,
             token_version: 0,
             mfa_required: false,
@@ -370,6 +369,7 @@ impl AdminApplication {
             created_at: Some(now),
             updated_by: Some(ctx.user_id),
             updated_at: Some(now),
+            display_name: None,
         };
         let persisted_user = self.user_service.create_user(&mut conn, &new_user).await?;
 

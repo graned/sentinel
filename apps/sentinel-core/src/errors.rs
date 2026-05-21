@@ -199,6 +199,10 @@ pub enum ServiceError {
     // ── Forced password change ────────────────────────────────────────────────
     /// An admin-created account with a temporary password must change it first (maps to 403).
     MustChangePassword(String),
+
+    // ── Federation errors ─────────────────────────────────────────────────────
+    /// Supabase federation is not enabled (maps to 404).
+    FederationNotEnabled(String),
 }
 
 impl fmt::Display for ServiceError {
@@ -230,7 +234,8 @@ impl fmt::Display for ServiceError {
             | ServiceError::MfaAttemptLimitExceeded(msg)
             | ServiceError::ApiTokenNotFound(msg)
             | ServiceError::EmailNotVerified(msg)
-            | ServiceError::MustChangePassword(msg) => write!(f, "{msg}"),
+            | ServiceError::MustChangePassword(msg)
+            | ServiceError::FederationNotEnabled(msg) => write!(f, "{msg}"),
         }
     }
 }
@@ -401,6 +406,12 @@ impl From<ServiceError> for ApiError {
                 message: msg,
                 details: None,
                 status: StatusCode::FORBIDDEN,
+            },
+            ServiceError::FederationNotEnabled(msg) => ApiError {
+                code: "FEDERATION_NOT_ENABLED".to_string(),
+                message: msg,
+                details: None,
+                status: StatusCode::NOT_FOUND,
             },
         }
     }

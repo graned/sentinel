@@ -16,6 +16,10 @@ services:
       - OIDC_ISSUER_URL=http://localhost:8080
       - FRONTEND_URL=http://localhost:3000
       - CORS_ALLOWED_ORIGINS=http://localhost:3000
+      - SUPABASE_FEDERATION_ENABLED=${SUPABASE_FEDERATION_ENABLED:-false}
+      - SUPABASE_JWKS_URL=${SUPABASE_JWKS_URL:-http://localhost:9999/auth/v1/.well-known/jwks.json}
+      - SUPABASE_JWT_ISSUER=${SUPABASE_JWT_ISSUER:-http://localhost:9999/auth/v1}
+      - SUPABASE_JWT_AUDIENCE=${SUPABASE_JWT_AUDIENCE:-authenticated}
     volumes:
       - ./Cargo.toml:/app/Cargo.toml:ro
       - ./apps/sentinel-core:/app/apps/sentinel-core

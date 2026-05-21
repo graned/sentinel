@@ -211,6 +211,7 @@ impl AuthApplication {
                         created_at: Some(Utc::now()),
                         updated_by: Some(user_id),
                         updated_at: Some(Utc::now()),
+                        display_name: None,
                     };
                     // Insert User
                     let persisted_user = user_service.create_user(trx, &new_user).await?;
