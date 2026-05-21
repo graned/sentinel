@@ -18,7 +18,7 @@ use crate::{
     PasswordResetTokenRepository, PolicyApplication, PolicyRepository, PolicyService,
     PolicyVersionRepository, PostgresClient, ProviderConfigurationReposiory,
     ProviderConfigurationService, RoleRepository, SessionRepository, SessionService,
-    SupabaseFederationConfig, SupabaseJwtVerifier, SystemApplication, UserApplication,
+    SupabaseFederationConfig, SystemApplication, UserApplication,
     UserMfaTotpRepository, UserPasswordApplication, UserRecoveryCodeRepository, UserRepository,
     UserRoleRepository, UserRoleService, UserService,
 };

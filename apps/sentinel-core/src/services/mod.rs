@@ -42,6 +42,6 @@ pub use password_reset_service::PasswordResetService;
 pub use policy_service::PolicyService;
 pub use provider_config_service::ProviderConfigurationService;
 pub use session_service::{SessionService, SessionTokens};
-pub use supabase_jwt_verifier::{SupabaseJwtVerifier, VerifiedSupabaseToken};
+pub use supabase_jwt_verifier::{SupabaseFederationConfig, SupabaseJwtVerifier, VerifiedSupabaseToken};
 pub use user_role_service::UserRoleService;
 pub use user_service::UserService;

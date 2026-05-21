@@ -1,6 +1,6 @@
 //! DTOs for federation endpoints.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use validator::Validate;
 
 /// Request body for exchanging a Supabase token.

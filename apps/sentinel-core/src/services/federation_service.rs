@@ -39,15 +39,17 @@ impl FederationService {
 
     /// Exchange a verified external identity for a Sentinel session.
     ///
-    /// If the external identity exists, load the linked user and create a session.
-    /// If the external identity doesn't exist, create a new user + identity mapping + session.
+    /// Flow:
+    /// 1. Check if external_identity exists (by provider+issuer+subject) → use that user
+    /// 2. If not, check if user with that email exists → link external_identity to that user
+    /// 3. If neither exists → create new user with that email
     ///
     /// # Arguments
     /// * `conn` - Database connection
     /// * `provider` - Provider name (e.g., "supabase")
     /// * `issuer` - Token issuer URL
-    /// * `subject` - Stable external identity key (UUID from Supabase sub)
-    /// * `email` - Email from token (snapshot only, not used for matching)
+    /// * `subject` - Stable external identity key (Supabase sub, stored for reference)
+    /// * `email` - Email from token (used for user lookup/creation)
     /// * `user_metadata` - Additional metadata from token
     ///
     /// # Returns
@@ -72,7 +74,7 @@ impl FederationService {
             self.exchange_existing_user(conn, ext_identity, email, user_metadata)
                 .await
         } else {
-            self.exchange_new_user(conn, provider, issuer, subject, email, user_metadata)
+            self.exchange_new_or_existing_user(conn, provider, issuer, subject, email, user_metadata)
                 .await
         }
     }
@@ -82,7 +84,7 @@ impl FederationService {
         &self,
         conn: &mut DbConnection<'_>,
         ext_identity: ExternalIdentity,
-        email: Option<String>,
+        _email: Option<String>,
         user_metadata: Option<serde_json::Value>,
     ) -> Result<(Sessions, crate::SessionTokens), ServiceError> {
         let user = self
@@ -120,9 +122,14 @@ impl FederationService {
         self.create_session(conn, &user, &identity, &roles).await
     }
 
-    /// Handle exchange for a new external identity (create user + mapping).
+    /// Handle exchange for a new or existing user (by email).
+    ///
+    /// Flow:
+    /// 1. Try to find user by email
+    /// 2. If found, link external_identity to that user
+    /// 3. If not found, create new user with that email
     #[allow(clippy::too_many_arguments)]
-    async fn exchange_new_user(
+    async fn exchange_new_or_existing_user(
         &self,
         conn: &mut DbConnection<'_>,
         provider: &str,
@@ -131,8 +138,9 @@ impl FederationService {
         email: Option<String>,
         user_metadata: Option<serde_json::Value>,
     ) -> Result<(Sessions, crate::SessionTokens), ServiceError> {
-        let user_id = Uuid::parse_str(subject)
-            .map_err(|_| ServiceError::InternalError("Invalid subject UUID format".to_string()))?;
+        let email_addr = email.clone().ok_or_else(|| {
+            ServiceError::ValidationError("Email is required for federation".to_string())
+        })?;
 
         let display_name = user_metadata.as_ref().and_then(|m| {
             m.get("full_name")
@@ -141,57 +149,73 @@ impl FederationService {
                 .map(String::from)
         });
 
-        let user = User {
-            user_id,
-            first_name: None,
-            last_name: None,
-            avatar_url: None,
-            status: UserStatus::Active,
-            token_version: 0,
-            mfa_required: false,
-            created_at: Some(Utc::now()),
-            updated_at: Some(Utc::now()),
-            created_by: Some(user_id),
-            updated_by: Some(user_id),
-            display_name,
+        let (persisted_user, identity) = match self.identity_service.find_identity_by_email(conn, &email_addr).await {
+            Ok(Some(existing_identity)) => {
+                let user = self
+                    .user_service
+                    .find_user_by_id(conn, existing_identity.user_id)
+                    .await
+                    .map_err(|e| ServiceError::DatabaseError(e.to_string()))?
+                    .ok_or_else(|| {
+                        ServiceError::InternalError("User not found for identity".to_string())
+                    })?;
+
+                (user, existing_identity)
+            }
+            _ => {
+                let user_id = Uuid::new_v4();
+
+                let user = User {
+                    user_id,
+                    first_name: None,
+                    last_name: None,
+                    avatar_url: None,
+                    status: UserStatus::Active,
+                    token_version: 0,
+                    mfa_required: false,
+                    created_at: Some(Utc::now()),
+                    updated_at: Some(Utc::now()),
+                    created_by: Some(user_id),
+                    updated_by: Some(user_id),
+                    display_name,
+                };
+
+                let persisted_user = self
+                    .user_service
+                    .create_user(conn, &user)
+                    .await
+                    .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
+
+                let identity_id = Uuid::new_v4();
+                let identity = UserIdentity {
+                    identity_id,
+                    user_id: persisted_user.user_id,
+                    provider: IdentityProvider::EmailPassword,
+                    provider_user_id: None,
+                    email: email_addr.clone(),
+                    password_hash: None,
+                    password_changed_at: None,
+                    email_verified: Some(true),
+                    oauth_access_token: None,
+                    oauth_refresh_token: None,
+                    oauth_token_expires_at: None,
+                    is_primary: true,
+                    last_login_at: Some(Utc::now()),
+                    must_change_password: false,
+                    created_at: Some(Utc::now()),
+                    updated_at: Some(Utc::now()),
+                    created_by: Some(user_id),
+                    updated_by: Some(user_id),
+                };
+
+                self.identity_service
+                    .create_identity(conn, &identity)
+                    .await
+                    .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
+
+                (persisted_user, identity)
+            }
         };
-
-        let persisted_user = self
-            .user_service
-            .create_user(conn, &user)
-            .await
-            .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
-
-        let identity_id = Uuid::new_v4();
-        let identity_email = email
-            .clone()
-            .unwrap_or_else(|| format!("{}@federated.local", subject));
-
-        let identity = UserIdentity {
-            identity_id,
-            user_id: persisted_user.user_id,
-            provider: IdentityProvider::EmailPassword,
-            provider_user_id: Some(subject.to_string()),
-            email: identity_email,
-            password_hash: None,
-            password_changed_at: None,
-            email_verified: Some(true),
-            oauth_access_token: None,
-            oauth_refresh_token: None,
-            oauth_token_expires_at: None,
-            is_primary: true,
-            last_login_at: Some(Utc::now()),
-            must_change_password: false,
-            created_at: Some(Utc::now()),
-            updated_at: Some(Utc::now()),
-            created_by: Some(user_id),
-            updated_by: Some(user_id),
-        };
-
-        self.identity_service
-            .create_identity(conn, &identity)
-            .await
-            .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
 
         let ext_identity = ExternalIdentity {
             external_identity_id: Uuid::new_v4(),
@@ -204,8 +228,8 @@ impl FederationService {
             created_at: Utc::now(),
             updated_at: Utc::now(),
             last_login_at: Some(Utc::now()),
-            created_by: Some(user_id),
-            updated_by: Some(user_id),
+            created_by: Some(persisted_user.user_id),
+            updated_by: Some(persisted_user.user_id),
         };
 
         self.external_identity_repo
@@ -213,29 +237,40 @@ impl FederationService {
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
 
-        let role = self
+        let roles = self
             .user_role_service
-            .get_role_by_type(conn, RoleType::User)
+            .get_user_roles(conn, &persisted_user)
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
 
-        let user_role = UserRole {
-            user_role_id: Uuid::new_v4(),
-            user_id: persisted_user.user_id,
-            role_id: role.role_id,
-            created_at: Utc::now(),
-            created_by: Some(user_id),
-        };
+        if roles.is_empty() {
+            let role = self
+                .user_role_service
+                .get_role_by_type(conn, RoleType::User)
+                .await
+                .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
 
-        self.user_role_service
-            .add_role_to_user(conn, &user_role)
+            let user_role = UserRole {
+                user_role_id: Uuid::new_v4(),
+                user_id: persisted_user.user_id,
+                role_id: role.role_id,
+                created_at: Utc::now(),
+                created_by: Some(persisted_user.user_id),
+            };
+
+            self.user_role_service
+                .add_role_to_user(conn, &user_role)
+                .await
+                .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
+        }
+
+        let roles = self
+            .user_role_service
+            .get_user_roles(conn, &persisted_user)
             .await
             .map_err(|e| ServiceError::DatabaseError(e.to_string()))?;
 
-        let roles = vec![role];
-
-        self.create_session(conn, &persisted_user, &identity, &roles)
-            .await
+        self.create_session(conn, &persisted_user, &identity, &roles).await
     }
 
     /// Update identity metadata snapshot.

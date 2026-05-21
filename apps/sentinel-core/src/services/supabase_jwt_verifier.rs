@@ -4,11 +4,19 @@
 //! Performs full OIDC-style validation: signature, issuer, audience, exp, nbf, sub.
 
 use crate::ServiceError;
-use jsonwebtoken::{jwk::JwkSet, Algorithm, DecodingKey, TokenData, Validation};
+use jsonwebtoken::{jwk::JwkSet, DecodingKey, TokenData, Validation};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
+
+/// Configuration for Supabase federation.
+pub struct SupabaseFederationConfig {
+    pub enabled: bool,
+    pub jwks_url: String,
+    pub jwt_issuer: String,
+    pub jwt_audience: String,
+}
 
 /// Cached JWKS with expiry time.
 struct JwksCache {

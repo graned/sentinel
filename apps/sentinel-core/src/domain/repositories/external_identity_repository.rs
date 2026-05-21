@@ -93,10 +93,8 @@ impl ExternalIdentityRepository {
         conn: &mut crate::DbConnection<'_>,
         user_id: Uuid,
     ) -> Result<Vec<ExternalIdentity>, crate::RepositoryError> {
-        use crate::schema::external_identities::dsl::{
-            external_identities, user_id as col_user_id,
-        };
-        use diesel::{ExpressionMethods, QueryDsl};
+        use crate::schema::external_identities::dsl::{user_id as col_user_id};
+        use diesel::ExpressionMethods;
 
         let results = self.find_where(conn, col_user_id.eq(user_id)).await?;
 

@@ -44,7 +44,6 @@ use crate::{
     http::api::handlers::api_token_handlers::*,
     http::api::handlers::auth_handlers::*,
     http::api::handlers::email_template_handlers::*,
-    http::api::handlers::federation_handlers::*,
     http::api::handlers::mfa_handlers::*,
     http::api::handlers::password_handlers::*,
     http::api::handlers::system_handlers::*,

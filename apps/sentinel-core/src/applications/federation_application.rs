@@ -3,18 +3,10 @@
 //! Coordinates Supabase JWT verification and session creation.
 
 use crate::{
-    http::api::dtos::BasicLoginResponse, DbConnection, FederationService, PostgresClient,
-    ServiceError, SupabaseJwtVerifier,
+    http::api::dtos::BasicLoginResponse, FederationService, PostgresClient,
+    ServiceError, SupabaseFederationConfig, SupabaseJwtVerifier,
 };
 use std::sync::Arc;
-
-/// Configuration for Supabase federation.
-pub struct SupabaseFederationConfig {
-    pub enabled: bool,
-    pub jwks_url: String,
-    pub jwt_issuer: String,
-    pub jwt_audience: String,
-}
 
 /// Orchestrates federated authentication flows.
 pub struct FederationApplication {
