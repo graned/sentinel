@@ -2,10 +2,7 @@ mod common;
 
 use common::{
     helpers::{admin_login, assert_error_envelope, disable_admin_mfa, read_json},
-    setup::{
-        get_api_token_exchange_url, get_api_tokens_url, get_login_user_url, get_register_user_url,
-        get_user_me_url,
-    },
+    setup::{get_api_token_exchange_url, get_api_tokens_url, get_login_user_url, get_user_me_url},
 };
 use reqwest::Client;
 use serde_json::json;
@@ -28,26 +25,6 @@ async fn login(client: &Client, email: &str, password: &str) -> String {
         .and_then(|v| v.as_str())
         .unwrap_or_else(|| panic!("missing access_token: {body}"))
         .to_string()
-}
-
-/// Register a new user and return the email.
-async fn register_new_user(client: &Client) -> String {
-    let email = format!("exchange-{}@test.com", Uuid::new_v4());
-    let password = "T3stP@ssw0rd#Sec";
-    let res = client
-        .post(get_register_user_url())
-        .json(&json!({
-            "email": email,
-            "password": password,
-            "first_name": "Exchange",
-            "last_name": "User"
-        }))
-        .send()
-        .await
-        .expect("request failed");
-    let (status, _, raw) = read_json(res).await;
-    assert_eq!(status, 200, "register failed: {raw}");
-    email
 }
 
 /// Use the seeded admin user to create an API token and return the raw `sat_*` token.
