@@ -145,6 +145,10 @@ npm run format       # prettier --write
 npm run format:check # prettier --check
 ```
 
+## Versioning
+
+Aligned with `sentinel-core` releases. See `apps/sentinel-core/CHANGELOG.md` for backend changes.
+
 ## Local package dependencies
 
 This app references two local packages as `file:` dependencies:
