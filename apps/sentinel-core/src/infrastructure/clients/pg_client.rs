@@ -1,9 +1,9 @@
+use diesel::{ConnectionError, ConnectionResult};
 use diesel_async::pooled_connection::bb8::{Pool, PooledConnection};
-use diesel_async::pooled_connection::ManagerConfig;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
+use diesel_async::pooled_connection::ManagerConfig;
 use diesel_async::pooled_connection::PoolError;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
-use diesel::{ConnectionError, ConnectionResult};
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use rustls::ClientConfig;
@@ -35,7 +35,8 @@ impl PostgresClient {
         let mut config = ManagerConfig::default();
         config.custom_setup = Box::new(establish_connection);
         let manager = AsyncDieselConnectionManager::<AsyncPgConnection>::new_with_config(
-            database_url, config,
+            database_url,
+            config,
         );
         let pool = Pool::builder()
             .max_size(20)
@@ -47,7 +48,9 @@ impl PostgresClient {
         Ok(Self { pool })
     }
 
-    pub fn pool(&self) -> &DbPool { &self.pool }
+    pub fn pool(&self) -> &DbPool {
+        &self.pool
+    }
 
     pub async fn get_conn(&self) -> Result<DbConnection<'_>, bb8::RunError<PoolError>> {
         self.pool.get().await
