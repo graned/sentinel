@@ -21,11 +21,13 @@ on:
       - "packages/sentinel-auth-react/**"
       - "Cargo.toml"
       - "Cargo.lock"
+      - "Dockerfile.migrate"
 
 env:
   REGISTRY: ghcr.io
   IMAGE_CORE: ghcr.io/${{ github.repository_owner }}/sentinel-core
   IMAGE_UI: ghcr.io/${{ github.repository_owner }}/sentinel-ui
+  IMAGE_MIGRATE: ghcr.io/${{ github.repository_owner }}/sentinel-migrate
   MIGRATE_IMAGE: ghcr.io/${{ github.repository_owner }}/sentinel-migrate:latest
 
 concurrency:
@@ -55,6 +57,7 @@ jobs:
               - 'packages/sentinel-policy-engine/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
+              - 'Dockerfile.migrate'
             typescript:
               - 'apps/sentinel-ui/**'
               - 'packages/sentinel-auth-sdk/**'
@@ -189,12 +192,44 @@ jobs:
             --changed "${{ needs.changes.outputs.typescript }}" \
             --build-arg "VITE_API_URL=${{ vars.VITE_API_URL || '' }}"
 
+  # ── Build sentinel-migrate ──────────────────────────────────────────────────
+  # Builds and pushes the migrate image on pushes to main when migration
+  # files or the Dockerfile change.
+  build-migrate:
+    name: Build sentinel-migrate
+    needs: changes
+    if: github.event_name == 'push' && needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push sentinel-migrate
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.migrate
+          push: true
+          tags: |
+            ${{ env.MIGRATE_IMAGE }}
+            ${{ env.IMAGE_MIGRATE }}:sha-${GITHUB_SHA:0:12}
+
   # ── Integration tests ──────────────────────────────────────────────────────
   # Depends only on build-core; runs whenever a sentinel-core image was produced.
   test:
     name: Integration Tests
-    needs: [build-core]
-    if: needs.build-core.result == 'success'
+    needs: [build-core, build-migrate]
+    if: |
+      always() &&
+      needs.build-core.result == 'success' &&
+      (needs.build-migrate.result == 'success' || needs.build-migrate.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: read
