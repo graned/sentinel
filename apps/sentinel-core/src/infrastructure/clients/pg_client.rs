@@ -6,8 +6,7 @@ use diesel_async::pooled_connection::PoolError;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
-use rustls::ClientConfig;
-use rustls_platform_verifier::ConfigVerifierExt;
+use native_tls::TlsConnector;
 use std::time::Duration;
 
 pub type DbPool = Pool<AsyncPgConnection>;
@@ -20,8 +19,10 @@ pub struct PostgresClient {
 
 fn establish_connection(config: &str) -> BoxFuture<'_, ConnectionResult<AsyncPgConnection>> {
     let fut = async {
-        let rustls_config = ClientConfig::with_platform_verifier();
-        let tls = tokio_postgres_rustls::MakeRustlsConnect::new(rustls_config);
+        let connector = TlsConnector::builder()
+            .build()
+            .map_err(|e| ConnectionError::BadConnection(e.to_string()))?;
+        let tls = postgres_native_tls::MakeTlsConnector::new(connector);
         let (client, conn) = tokio_postgres::connect(config, tls)
             .await
             .map_err(|e| ConnectionError::BadConnection(e.to_string()))?;
