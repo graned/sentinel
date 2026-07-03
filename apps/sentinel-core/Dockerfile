@@ -1,5 +1,5 @@
 # ── Stage 1: build ────────────────────────────────────────────────────────────
-FROM rust:1.91-slim AS builder
+FROM rust:1.91-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \

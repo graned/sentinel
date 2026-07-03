@@ -25,6 +25,11 @@ async fn main() -> anyhow::Result<()> {
 
     println!("🚀 Web API server starting...");
 
+    // Install the default rustls crypto provider (required by rustls 0.23).
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls ring crypto provider");
+
     let db_url = env::var("DATABASE_URL").expect("Database URL must be set");
     let hex_key = env::var("HEX_KEY").expect("Hex key is missing");
     let config_key = env::var("CONFIG_ENCRYPTION_KEY").expect("Config enc key is missing");
