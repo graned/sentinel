@@ -19,7 +19,35 @@ pub struct PostgresClient {
 
 fn establish_connection(config: &str) -> BoxFuture<'_, ConnectionResult<AsyncPgConnection>> {
     let fut = async {
-        let connector = TlsConnector::builder()
+        let mut builder = TlsConnector::builder();
+
+        let cert_path = std::env::var("SSL_CERT_FILE")
+            .ok()
+            .filter(|p| !p.is_empty());
+
+        let default_path = "/ca-certificate.crt";
+        let resolved_path = cert_path
+            .as_deref()
+            .filter(|p| std::path::Path::new(p).exists())
+            .or_else(|| {
+                if std::path::Path::new(default_path).exists() {
+                    Some(default_path)
+                } else {
+                    None
+                }
+            });
+
+        if let Some(path) = resolved_path {
+            let cert = std::fs::read(path).map_err(|e| {
+                ConnectionError::BadConnection(format!("Failed to read CA cert {}: {}", path, e))
+            })?;
+            let cert = native_tls::Certificate::from_pem(&cert)
+                .map_err(|e| ConnectionError::BadConnection(format!("Invalid CA cert: {}", e)))?;
+            builder.add_root_certificate(cert);
+            tracing::info!("Loaded CA certificate from {}", path);
+        }
+
+        let connector = builder
             .build()
             .map_err(|e| ConnectionError::BadConnection(e.to_string()))?;
         let tls = postgres_native_tls::MakeTlsConnector::new(connector);
