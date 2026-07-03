@@ -21,11 +21,8 @@ services:
   # SENTINEL_MIGRATE_IMAGE must be set before running compose.
   migrate:
     image: ${SENTINEL_MIGRATE_IMAGE}
-    command: sh -c "cd apps/sentinel-core && diesel migration run"
     environment:
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/sentinel_auth
-    volumes:
-      - ./apps/sentinel-core:/app/apps/sentinel-core
     depends_on:
       postgres:
         condition: service_healthy
