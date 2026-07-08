@@ -7,7 +7,6 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use native_tls::TlsConnector;
-use std::error::Error;
 use std::time::Duration;
 
 pub type DbPool = Pool<AsyncPgConnection>;
@@ -55,12 +54,18 @@ fn establish_connection(config: &str) -> BoxFuture<'_, ConnectionResult<AsyncPgC
 
         let (client, conn) = tokio_postgres::connect(config, tls).await.map_err(|e| {
             tracing::error!("Connection failed: {}", e);
-            let mut source = e.source();
-            while let Some(cause) = source {
-                tracing::error!("  caused by: {}", cause);
-                source = cause.source();
+            if let Some(inner) = e.into_source() {
+                tracing::error!("  caused by: {}", inner);
+                if let Some(source) = inner.source() {
+                    tracing::error!("    caused by: {}", source);
+                    let mut s = source.source();
+                    while let Some(cause) = s {
+                        tracing::error!("      caused by: {}", cause);
+                        s = cause.source();
+                    }
+                }
             }
-            ConnectionError::BadConnection(format!("TLS handshake failed: {}", e))
+            ConnectionError::BadConnection("TLS handshake failed — see logs above".to_string())
         })?;
 
         tokio::spawn(async move {
