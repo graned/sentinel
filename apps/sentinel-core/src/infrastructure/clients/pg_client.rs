@@ -7,7 +7,6 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use native_tls::TlsConnector;
-use std::error::Error;
 use std::time::Duration;
 
 pub type DbPool = Pool<AsyncPgConnection>;
