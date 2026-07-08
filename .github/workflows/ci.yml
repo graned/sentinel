@@ -211,6 +211,9 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA:0:12}" >> "$GITHUB_OUTPUT"
       - name: Build and push sentinel-migrate
         uses: docker/build-push-action@v6
         with:
@@ -219,7 +222,7 @@ jobs:
           push: true
           tags: |
             ${{ env.MIGRATE_IMAGE }}
-            ${{ env.IMAGE_MIGRATE }}:sha-${GITHUB_SHA:0:12}
+            ${{ env.IMAGE_MIGRATE }}:sha-${{ steps.sha.outputs.short }}
 
   # ── Integration tests ──────────────────────────────────────────────────────
   # Depends only on build-core; runs whenever a sentinel-core image was produced.
